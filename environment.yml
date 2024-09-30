@@ -1,0 +1,14 @@
+name: wmin-model-dev
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python >= 3.11
+  - mpich
+  - lhapdf
+  - pandoc
+  - mpi4py
+  - pip
+  - pip:
+    - -e .
