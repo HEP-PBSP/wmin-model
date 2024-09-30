@@ -13,6 +13,7 @@ Q: 1.65
 # as it can lead to miscancellations in the Sum Rules.
 hessian_normalization: false
 
+
 gridname: test_wmin_basis_pca 
 
 
