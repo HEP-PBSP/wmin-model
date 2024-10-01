@@ -11,7 +11,7 @@ description = "the weight minimisation pdf parameterisation "
 [tool.poetry.dependencies]
 
 # colibri needs to be installed from git
-colibri = { git = "https://github.com/HEP-PBSP/colibri" }
+colibri = { git = "https://${{ https://${{ secrets.GH_TOKEN }}@github.com/HEP-PBSP/colibri" }
 
 [tool.poetry.extras]
 test = [
