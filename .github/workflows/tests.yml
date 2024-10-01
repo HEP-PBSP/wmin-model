@@ -34,8 +34,8 @@ jobs:
         python-version: ${{ matrix.python-version }}
         miniforge-variant: Mambaforge
         miniforge-version: latest
-        activate-environment: colibri-dev
-        use-mamba: true    
+        activate-environment: wmin-model-dev
+        use-mamba: true
     
     - name: Cache Conda packages
       uses: actions/cache@v3
