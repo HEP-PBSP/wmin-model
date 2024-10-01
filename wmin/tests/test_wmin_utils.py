@@ -2,6 +2,7 @@ from unittest.mock import Mock
 
 import jax.numpy as jnp
 import pandas as pd
+
 from numpy.testing import assert_allclose
 from wmin.utils import likelihood_time, wmin_l1_penalty, wmin_l2_penalty
 

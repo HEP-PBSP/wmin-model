@@ -11,6 +11,7 @@ import jax
 import jax.numpy as jnp
 import pandas as pd
 from colibri.loss_functions import chi2
+
 from reportengine.table import table
 
 
