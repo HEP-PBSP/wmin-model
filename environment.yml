@@ -12,4 +12,5 @@ dependencies:
   - ultranest
   - pip
   - pip:
-    - -e . 
+    - -e .
+    - git+https://github.com/HEP-PBSP/colibri.git 

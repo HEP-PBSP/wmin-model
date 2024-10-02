@@ -10,3 +10,5 @@ dependencies:
   - pandoc
   - mpi4py
   - ultranest
+  - pip:
+    - -e . 
