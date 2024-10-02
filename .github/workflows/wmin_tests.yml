@@ -46,18 +46,18 @@ jobs:
 
     - name: Install dependencies
       run: |
-        conda activate wmin-model-dev
+        # conda activate wmin-model-dev
         python -m pip install --upgrade pip
 
     - name: Install colibri private repository
       run: |
-        conda activate wmin-model-dev
+        # conda activate wmin-model-dev
         pip install git+https://${{ secrets.WMIN_TOKEN }}@github.com/HEP-PBSP/colibri.git
 
     - name: Lint with flake8
       shell: bash -l {0}
       run: |
-        conda activate wmin-model-dev
+        # conda activate wmin-model-dev
         pip install flake8
         # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
@@ -67,6 +67,6 @@ jobs:
     - name: Test with pytest
       shell: bash -l {0}
       run: |
-        conda activate wmin-model-dev
+        # conda activate wmin-model-dev
         pip install pytest pytest-cov
         pytest -p no:warnings wmin/tests
