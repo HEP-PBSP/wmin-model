@@ -73,4 +73,9 @@ jobs:
         source $(conda info --base)/etc/profile.d/conda.sh  # Initialize Conda
         conda activate wmin-model-dev
         pip install pytest pytest-cov
-        pytest -p no:warnings wmin/tests
+        pytest -p no:warnings wmin/tests --cov-report=xml
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v4.2.0
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
