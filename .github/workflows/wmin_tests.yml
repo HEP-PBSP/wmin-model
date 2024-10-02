@@ -37,11 +37,11 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ~/conda_pkgs_dir
-        key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('environment.yml') }}
+        key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci_environment.yml') }}
     
     - name: Update environment
       run: |
-        mamba env update -n wmin-model-dev -f environment.yml
+        mamba env update -n wmin-model-dev -f ci_environment.yml
       if: steps.cache.outputs.cache-hit != 'true'
 
     - name: Install dependencies
