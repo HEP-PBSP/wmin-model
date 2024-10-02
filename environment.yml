@@ -12,4 +12,4 @@ dependencies:
   - ultranest
   - pip
   - pip:
-    - -e .
+    - git+https://${{ secrets.WMIN_TOKEN }}@github.com/HEP-PBSP/colibri.git
