@@ -22,7 +22,7 @@ def test_bayesian_fits(runcard, tmp_path):
     """
     Test the Bayesian fits using the regression runcards.
     """
-    regression_path = "colibri/models/wmin/wmin/tests/regression_runcards"
+    regression_path = "wmin/tests/regression_runcards"
 
     tmp_fit_folder = tmp_path / "tmp_bayes_fit"
 
@@ -31,7 +31,9 @@ def test_bayesian_fits(runcard, tmp_path):
         f"{EXE} {runcard} -o {tmp_fit_folder}".split(), cwd=regression_path, check=True
     )
 
-    expected_results = f"colibri/models/wmin/wmin/tests/regression_results/{runcard.split('.')[0]}/ns_result.csv"
+    expected_results = (
+        f"wmin/tests/regression_results/{runcard.split('.')[0]}/ns_result.csv"
+    )
     actual_results = f"{tmp_fit_folder}/ns_result.csv"
 
     # check that the results are as expected using the diff command
@@ -51,7 +53,7 @@ def test_monte_carlo_fits(runcard, tmp_path):
     """
     Test the Monte Carlo fits using the regression runcards.
     """
-    regression_path = "colibri/models/wmin/wmin/tests/regression_runcards"
+    regression_path = "wmin/tests/regression_runcards"
     TMP_NAME = "tmp_mc_fit"
     tmp_fit_folder = tmp_path / TMP_NAME
 
@@ -67,7 +69,9 @@ def test_monte_carlo_fits(runcard, tmp_path):
         check=True,
     )
 
-    expected_results = f"colibri/models/wmin/wmin/tests/regression_results/{runcard.split('.')[0]}/mc_result.csv"
+    expected_results = (
+        f"wmin/tests/regression_results/{runcard.split('.')[0]}/mc_result.csv"
+    )
     actual_results = f"{tmp_fit_folder}/mc_result.csv"
 
     # check that the results are as expected using the diff command
