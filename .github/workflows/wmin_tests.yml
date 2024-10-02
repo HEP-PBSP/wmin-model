@@ -44,9 +44,22 @@ jobs:
             ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{
             hashFiles('environment.yml') }}
     
-    - name: Update environment
-      run: mamba env update -n wmin-dev -f environment.yml
-      if: steps.cache.outputs.cache-hit != 'true'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install poetry
+
+    - name: Configure Git to use token
+      run: |
+        git config --global url."https://${{ secrets.PBSP_PRIVATE_REPO_TOKEN }}@github.com/HEP-PBSP/colibri"
+      
+    - name: Install project dependencies with Poetry
+      run: |
+        poetry install 
+
+#    - name: Update environment
+#      run: mamba env update -n wmin-dev -f environment.yml
+#      if: steps.cache.outputs.cache-hit != 'true'
 
     - name: Lint with flake8
       shell: bash -l {0}
