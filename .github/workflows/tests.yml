@@ -1,4 +1,4 @@
-name: wmin tests
+name: Tests
 
 on:
   push:
