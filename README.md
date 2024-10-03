@@ -1,6 +1,7 @@
 # wmin-model
-![Tests bagde](https://github.com/HEP-PBSP/wmin-model/actions/workflows/wmin_tests.yml/badge.svg)
+![Tests bagde](https://github.com/HEP-PBSP/wmin-model/actions/workflows/tests.yml/badge.svg)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![codecov](https://codecov.io/gh/HEP-PBSP/wmin-model/graph/badge.svg?token=uYUy3rXCWK)](https://codecov.io/gh/HEP-PBSP/wmin-model)
 
 Weight Minimisation PDF-model of Colibri
 
