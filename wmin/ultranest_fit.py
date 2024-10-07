@@ -11,7 +11,6 @@ def run_ultranest_fit(
     ultranest_fit,
     output_path,
     pdf_model,
-    wmin_inherited_evolution,
     wmin_settings,
     ns_settings,
     errortype="replicas",
@@ -34,7 +33,8 @@ def run_ultranest_fit(
         If True, the evolution of the wmin set is inherited from the basis used
     """
     wminpdfset = wmin_settings["wminpdfset"]
-    if wmin_inherited_evolution:
+
+    if wmin_settings["wmin_inherited_evolution"]:
         write_lhapdf_from_ultranest_result(
             wminpdfset,
             ultranest_fit,
