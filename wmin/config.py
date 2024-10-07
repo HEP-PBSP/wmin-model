@@ -8,8 +8,12 @@ Config module of wmin
 import dill
 from validphys.core import PDF
 from wmin.model import WMinPDF
+import logging
+from reportengine.configparser import ConfigError
 
 from colibri.config import Environment, colibriConfig
+
+log = logging.getLogger(__name__)
 
 
 class Environment(Environment):
@@ -22,7 +26,9 @@ class WminConfig(colibriConfig):
     """
 
     def parse_prior_settings(self, settings):
-
+        """
+        Parse the prior settings for the wmin fit.
+        """
         if "type" not in settings.keys():
             raise ValueError("Missing key type for prior_settings")
 
@@ -34,6 +40,35 @@ class WminConfig(colibriConfig):
                 settings["min_val"] = -1
             if "max_val" not in settings.keys():
                 settings["max_val"] = 1
+
+        return settings
+
+    def parse_wmin_settings(self, settings):
+        """
+        Parse the wmin settings onto a dictionary.
+        """
+        known_keys = {"n_basis", "wminpdfset", "wmin_inherited_evolution"}
+
+        kdiff = settings.keys() - known_keys
+        for k in kdiff:
+            log.warning(
+                ConfigError(f"Key '{k}' in ns_settings not known.", k, known_keys)
+            )
+
+        wmin_settings = {}
+
+        # Set the ultranest seed
+        if "n_basis" not in settings.keys():
+            raise ValueError("Missing key n_basis for wmin_settings")
+        wmin_settings["n_basis"] = settings.get("n_basis")
+
+        if "wminpdfset" not in settings.keys():
+            raise ValueError("Missing key wminpdfset for wmin_settings")
+        wmin_settings["wminpdfset"] = settings.get("wminpdfset")
+
+        wmin_settings["wmin_inherited_evolution"] = settings.get(
+            "wmin_inherited_evolution", False
+        )
 
         return settings
 
