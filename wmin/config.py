@@ -70,7 +70,7 @@ class WminConfig(colibriConfig):
             "wmin_inherited_evolution", False
         )
 
-        return settings
+        return wmin_settings
 
     def produce_pdf_model(self, wmin_settings, output_path, dump_model=True):
         """
