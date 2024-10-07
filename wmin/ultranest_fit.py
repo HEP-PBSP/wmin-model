@@ -1,0 +1,34 @@
+"""
+wmin.ultranest_fit.py
+
+This module allows to override some of the functions defined in colibri.ultranest_fit.py if necessary.
+"""
+
+
+def run_ultranest_fit(
+    ultranest_fit, output_path, pdf_model, wmin_inherited_evolution=False
+):
+    """
+    Overrides the run_ultranest_fit function in colibri.ultranest_fit.py.
+    It allows to export the results of an Ultranest fit in such a way that no evolution is
+    needed on the fitted wmin set once the fit has run. Evolution is directly inherited from
+    the basis that was used in the fit.
+
+    Parameters
+    ----------
+    ultranest_fit: UltranestFit
+        The results of the Ultranest fit.
+    output_path: pathlib.PosixPath
+        Path to the output folder.
+    pdf_model: pdf_model.PDFModel
+        The PDF model used in the fit.
+    wmin_inherited_evolution: bool
+        If True, the evolution of the wmin set is inherited from the basis used
+    """
+    if wmin_inherited_evolution:
+        pass
+    else:
+        # import here to avoid problems with duplicated names
+        from colibri.ultranest_fit import run_ultranest_fit
+
+        return run_ultranest_fit(ultranest_fit, output_path, pdf_model)
