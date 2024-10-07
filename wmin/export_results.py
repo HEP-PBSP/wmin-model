@@ -11,7 +11,12 @@ import os
 import logging
 import numpy as np
 
-from validphys.lhio import load_all_replicas, rep_matrix, write_replica
+from validphys.lhio import (
+    load_all_replicas,
+    rep_matrix,
+    write_replica,
+    generate_replica0,
+)
 from validphys.core import PDF
 
 log = logging.getLogger(__name__)
@@ -75,7 +80,7 @@ def write_lhapdf_from_ultranest_result(
     for i, wmin_weight in enumerate(wmin_parameters_sample):
         wmin_centr_rep, replica = (
             replicas_df.loc[:, [1]],
-            replicas_df.loc[:, range(2, len(ultranest_fit.param_names) + 2)],
+            replicas_df.loc[:, range(2, n_params + 2)],
         )
 
         wm_replica = wmin_centr_rep.dot([1.0 - np.sum(wmin_weight)]) + replica.dot(
@@ -88,3 +93,5 @@ def write_lhapdf_from_ultranest_result(
         write_replica(i + 1, new_wmin_pdf, wm_headers.encode("UTF-8"), wm_replica)
 
     # Generate central replica
+    log.info(f"Generating central replica for {new_wmin_pdf}")
+    generate_replica0(PDF(wmin_fit_name))
