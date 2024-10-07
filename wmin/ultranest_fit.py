@@ -4,9 +4,17 @@ wmin.ultranest_fit.py
 This module allows to override some of the functions defined in colibri.ultranest_fit.py if necessary.
 """
 
+from wmin.export_results import write_lhapdf_from_ultranest_result
+
 
 def run_ultranest_fit(
-    ultranest_fit, output_path, pdf_model, wmin_inherited_evolution=False
+    ultranest_fit,
+    output_path,
+    pdf_model,
+    wmin_inherited_evolution,
+    wmin_settings,
+    ns_settings,
+    errortype="replicas",
 ):
     """
     Overrides the run_ultranest_fit function in colibri.ultranest_fit.py.
@@ -25,8 +33,15 @@ def run_ultranest_fit(
     wmin_inherited_evolution: bool
         If True, the evolution of the wmin set is inherited from the basis used
     """
+    wminpdfset = wmin_settings["wminpdfset"]
     if wmin_inherited_evolution:
-        pass
+        write_lhapdf_from_ultranest_result(
+            wminpdfset,
+            ultranest_fit,
+            ns_settings,
+            output_path,
+            errortype,
+        )
     else:
         # import here to avoid problems with duplicated names
         from colibri.ultranest_fit import run_ultranest_fit
