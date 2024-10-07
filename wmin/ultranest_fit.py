@@ -29,8 +29,12 @@ def run_ultranest_fit(
         Path to the output folder.
     pdf_model: pdf_model.PDFModel
         The PDF model used in the fit.
-    wmin_inherited_evolution: bool
-        If True, the evolution of the wmin set is inherited from the basis used
+    wmin_settings: dict
+        Dictionary containing the wmin settings.
+    ns_settings: dict
+        Dictionary containing the settings for the nested sampling fit.
+    errortype: str
+        The type of error to be calculated. Default is "replicas".
     """
     wminpdfset = wmin_settings["wminpdfset"]
 
