@@ -23,7 +23,7 @@ log = logging.getLogger(__name__)
 
 
 def write_lhapdf_from_ultranest_result(
-    wminpdfset,
+    wmin_settings,
     ultranest_fit,
     ns_settings,
     output_path,
@@ -38,7 +38,8 @@ def write_lhapdf_from_ultranest_result(
     ----------
 
     """
-    wminpdfset = PDF(wminpdfset)
+    wminpdfset = PDF(wmin_settings["wminpdfset"])
+
     lhapdf_path = pathlib.Path(lhapdf.paths()[-1])
 
     # path to pdf set that was used as a basis for the wmin fit
@@ -71,6 +72,7 @@ def write_lhapdf_from_ultranest_result(
             else:
                 out_stream.write(l)
 
+    # load replicas from basis set at all scales
     headers, grids = load_all_replicas(wminpdfset)
     replicas_df = rep_matrix(grids)
     n_params = len(ultranest_fit.param_names)
@@ -87,7 +89,6 @@ def write_lhapdf_from_ultranest_result(
             wmin_weight
         )
 
-        # for i, replica in tqdm(enumerate(result), total=len(weights)):
         wm_headers = f"PdfType: replica\nFormat: lhagrid1\nFromMCReplica: {i}\n"
         log.info(f"Writing replica {i + 1} to {new_wmin_pdf}")
         write_replica(i + 1, new_wmin_pdf, wm_headers.encode("UTF-8"), wm_replica)

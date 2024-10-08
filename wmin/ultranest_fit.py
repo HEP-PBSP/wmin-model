@@ -36,11 +36,10 @@ def run_ultranest_fit(
     errortype: str
         The type of error to be calculated. Default is "replicas".
     """
-    wminpdfset = wmin_settings["wminpdfset"]
 
     if wmin_settings["wmin_inherited_evolution"]:
         write_lhapdf_from_ultranest_result(
-            wminpdfset,
+            wmin_settings,
             ultranest_fit,
             ns_settings,
             output_path,
