@@ -4,11 +4,11 @@ meta:
   keywords: [wmin basis]
 
 
-msht_like_hessian_pdf: MSHT20nnlo_as118
+msht_like_hessian_pdf: MSTW2008nlo68cl
 
-mc_pdf_name: MSHT20nnlo_as118_mc
+mc_pdf_name: MSTW2008nlo68cl_mc
 
-num_members: 2000
+num_members: 100
 
 watt_thorne_rnd_seed: 1
 

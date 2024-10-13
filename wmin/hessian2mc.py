@@ -49,7 +49,7 @@ def write_mc_watt_thorne_replicas(Rjk_std_normal, replicas_df, mc_pdf_path):
 
         central_member, hess_diff_cov = replicas_df.loc[:, [1]], df_even - df_odd
 
-        mc_replica = central_member.dot([1]) + hess_diff_cov.dot(rnd_std_norm_vec)
+        mc_replica = central_member.dot([1]) + 0.5 * hess_diff_cov.dot(rnd_std_norm_vec)
 
         wm_headers = f"PdfType: replica\nFormat: lhagrid1\nFromMCReplica: {i}\n"
         log.info(f"Writing replica {i + 1} to {mc_pdf_path}")
