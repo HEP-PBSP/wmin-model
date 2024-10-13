@@ -12,6 +12,8 @@ wmin_providers = [
     "wmin.utils",
     "wmin.basis",
     "wmin.ultranest_fit",
+    "wmin.hessian2mc",
+
 ]
 
 
