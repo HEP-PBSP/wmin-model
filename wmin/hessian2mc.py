@@ -40,6 +40,7 @@ def write_mc_watt_thorne_replicas(Rjk_std_normal, replicas_df, mc_pdf_path):
 
     for i, rnd_std_norm_vec in enumerate(Rjk_std_normal):
 
+        # Odd eigenvectors: negative direction, even eigenvectors: positive direction
         df_odd = replicas_df.loc[:, 2::2]
         df_even = replicas_df.loc[:, 3::2]
         new_column_names = range(1, len(df_even.columns) + 1)
@@ -49,6 +50,7 @@ def write_mc_watt_thorne_replicas(Rjk_std_normal, replicas_df, mc_pdf_path):
 
         central_member, hess_diff_cov = replicas_df.loc[:, [1]], df_even - df_odd
 
+        # Eq. 4.3 of arXiv:2203.05506
         mc_replica = central_member.dot([1]) + 0.5 * hess_diff_cov.dot(rnd_std_norm_vec)
 
         wm_headers = f"PdfType: replica\nFormat: lhagrid1\nFromMCReplica: {i}\n"
