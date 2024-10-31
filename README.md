@@ -20,7 +20,7 @@ conda env create -n myenv -f environment.yml
 The above procedure installs the model in editable mode, but colibri is not. If developing colibri as well, a further simple step is required.
 Activate the environment, go to the colibri repository and install it in editable mode:
 ```
-cd /path/to/colibri/colibri
+cd /path/to/colibri/
 pip install -e .
 ```
 
