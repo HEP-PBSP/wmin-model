@@ -292,7 +292,6 @@ def write_wmin_basis(
     """
     Writes the wmin basis at the parametrisation scale Q to the output_path.
     """
-    wmin_basis_pdf_grid = wmin_basis_pdf_grid
 
     replicas_path = str(output_path) + "/replicas"
     if not os.path.exists(replicas_path):
