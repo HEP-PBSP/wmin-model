@@ -15,6 +15,7 @@ from wmin.basis import (
     wmin_basis_sum_rules_normalization,
     sum_rules_dict,
     wmin_basis_replica_selector,
+    wmin_basis_pdf_grid,
 )
 from colibri.constants import FLAVOUR_TO_ID_MAPPING, LHAPDF_XGRID
 from colibri.tests.conftest import TEST_PDFSET
@@ -221,3 +222,112 @@ def test_wmin_basis_sum_rules_normalization():
         1,
         rtol=1e-2,
     )
+
+
+import numpy as np
+from unittest.mock import patch, MagicMock
+
+# Mock data and values for testing
+mock_xgrid = np.array([0.001, 0.01, 0.1, 0.5])  # Example x-grid
+mock_pdf_sum_rules = [
+    {
+        "pdf1": {
+            "momentum": np.array([1.0]),
+            "uvalence": np.array([0.5]),
+            "dvalence": np.array([0.25]),
+            "svalence": np.array([0.25]),
+        }
+    },
+    {
+        "pdf2": {
+            "momentum": np.array([1.0]),
+            "uvalence": np.array([0.5]),
+            "dvalence": np.array([0.25]),
+            "dvalence": np.array([0.25]),
+        }
+    },
+]
+mock_selected_replicas = np.array([0, 2])  # Indices of replicas that pass sum rules
+mock_pdf_grid = np.random.rand(
+    2 * len(mock_selected_replicas), 5, len(mock_xgrid), 1
+)  # Example PDF grid
+
+
+@patch("wmin.basis.convolution.evolution.grid_values")
+@patch("wmin.basis.wmin_basis_sum_rules_normalization")
+@patch("wmin.basis.wmin_pdfbasis_normalization")
+@patch("wmin.basis.wmin_basis_replica_selector")
+def test_wmin_basis_pdf_grid_valid_output(
+    mock_replica_selector,
+    mock_basis_normalization,
+    mock_sum_rules_normalization,
+    mock_grid_values,
+):
+
+    # Mock return values
+    mock_replica_selector.return_value = mock_selected_replicas
+    mock_grid_values.return_value = np.random.rand(10, 5, len(mock_xgrid), 1)
+    mock_sum_rules_normalization.side_effect = (
+        lambda grid, **kwargs: grid
+    )  # Pass-through
+    mock_basis_normalization.side_effect = lambda grid, **kwargs: grid  # Pass-through
+
+    # Run the function
+    result = wmin_basis_pdf_grid(
+        pdfs_sum_rules=mock_pdf_sum_rules,
+        pdf_basis="intrinsic_charm",
+        Q=1.65,
+        xgrid=mock_xgrid,
+    )
+
+    # Check that result shape is as expected
+    assert result.shape == (
+        len(mock_selected_replicas) * len(mock_pdf_sum_rules),
+        5,
+        len(mock_xgrid),
+    ), "Resulting PDF grid shape is incorrect."
+
+
+@patch("wmin.basis.wmin_basis_replica_selector")
+def test_wmin_basis_pdf_grid_no_valid_replicas(
+    mock_replica_selector,
+):
+    # Mock replica selector to return empty array, simulating no valid replicas
+    mock_replica_selector.return_value = np.array([])
+
+    # Run the function and expect raise error
+    with unittest.TestCase().assertRaises(ValueError):
+        wmin_basis_pdf_grid(
+            pdfs_sum_rules=mock_pdf_sum_rules,
+            pdf_basis="intrinsic_charm",
+            Q=1.65,
+            xgrid=mock_xgrid,
+        )
+
+
+@patch("wmin.basis.convolution.evolution.grid_values")
+@patch("wmin.basis.wmin_basis_sum_rules_normalization")
+@patch("wmin.basis.wmin_pdfbasis_normalization")
+@patch("wmin.basis.wmin_basis_replica_selector")
+def test_wmin_basis_pdf_grid_normalization_calls(
+    mock_replica_selector,
+    mock_sum_rules_normalization,
+    mock_basis_normalization,
+    mock_grid_values,
+):
+
+    # Mock return values
+    mock_replica_selector.return_value = mock_selected_replicas
+    mock_grid_values.return_value = mock_pdf_grid
+
+    # Run the function
+    result = wmin_basis_pdf_grid(
+        pdfs_sum_rules=mock_pdf_sum_rules,
+        pdf_basis="intrinsic_charm",
+        Q=1.65,
+        xgrid=mock_xgrid,
+    )
+
+    # Check that the sum rule normalization was called with the expected parameters
+    mock_sum_rules_normalization.assert_called()
+    mock_basis_normalization.assert_called()
