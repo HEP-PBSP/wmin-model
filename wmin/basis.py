@@ -9,7 +9,6 @@ satisfaction of the momentum, u-valence and d-valence sum rules.
 import numpy as np
 import logging
 import os
-import yaml
 import pathlib
 import shutil
 
@@ -29,7 +28,6 @@ from validphys.checks import check_pdf_is_montecarlo
 
 from colibri.constants import (
     LHAPDF_XGRID,
-    evolution_to_flavour_matrix,
     EXPORT_LABELS,
     FLAVOUR_TO_ID_MAPPING,
 )
@@ -55,25 +53,170 @@ def sum_rules_dict(pdf, Q=1.65):
     Returns
     -------
     dict
-        A dictionary containing the sum rules for the given PDF set.
+        A nested dictionary with key name of the PDF set and value a dictionary
+        containing the sum rules values for the replicas of the PDF set.
     """
     return {str(pdf): sum_rules(pdf, Q)}
 
 
 """
-Collects the sum rules for all PDF sets.
+Collects the sum rules for all PDF sets. Is a list of nested sum_rules_dict dictionaries.
 """
 pdfs_sum_rules = collect("sum_rules_dict", ("pdfs",))
 
 
-def basis_replica_selector(
-    pdfs_sum_rules, sum_rule_atol=1e-3, Q=1.65, xgrid=LHAPDF_XGRID
+def wmin_basis_replica_selector(sum_rule_dict, sum_rule_atol=1e-2):
+    """
+    For a pdf set select replicas that simultaneously pass the
+    momentum, u-valence, d-valence, s-valence, and c-valence sum rules to the required accuracy.
+    Returns an array of indices corresponding to the pdf replicas passing the required accuracy.
+
+    Parameters
+    ----------
+    sum_rule_dict: dict
+
+    sum_rule_atol: float, default is 1e-2
+        the absolute tolerance for the sum rules.
+    """
+    sum_rules_types = ["momentum", "uvalence", "dvalence", "svalence", "cvalence"]
+    sum_rules_values = {
+        sum_rule_type: sum_rule_dict[sum_rule_type] for sum_rule_type in sum_rules_types
+    }
+    sum_rules_indices = [
+        np.where(
+            np.isclose(
+                sum_rules_values[sum_rule_type],
+                KNOWN_SUM_RULES_EXPECTED[sum_rule_type],
+                atol=sum_rule_atol,
+            )
+        )[0]
+        for sum_rule_type in sum_rules_types
+    ]
+
+    # Select replicas that pass all sum rules simultaneously
+    selected_replicas_idxs = sum_rules_indices[0]  # Start with the first index set
+
+    for sr_idx in sum_rules_indices[1:]:
+        selected_replicas_idxs = np.intersect1d(selected_replicas_idxs, sr_idx)
+
+    return selected_replicas_idxs
+
+
+def wmin_basis_sum_rules_normalization(
+    pdf_grid, sum_rule_dict, selected_replicas_idxs=slice(None)
 ):
     """
-    For each pdf set select replicas that simultaneously pass the
-    momentum, u-valence, d-valence, s-valence, and c-valence sum rules to the required accuracy.
+    Normalizes the pdf grid so that the sum rules are exact.
+
+    Parameters
+    ----------
+    pdf_grid: np.array, shape (Nreplicas x Nfl x Ngrid)
+
+    sum_rule_dict: dict
+        A dictionary containing the sum rules in the flavour basis for the given PDF set.
+
+    selected_replicas_idxs: slice
+        list of indices of replicas to be selected from the pdf_grid.
+
+    Returns
+    -------
+    np.array, an array of shape (Nreplicas x Nfl x Ngrid)
+    """
+
+    momentum_sr = sum_rule_dict["momentum"][selected_replicas_idxs]
+    uvalence_sr = sum_rule_dict["uvalence"][selected_replicas_idxs]
+    dvalence_sr = sum_rule_dict["dvalence"][selected_replicas_idxs]
+    svalence_sr = sum_rule_dict["svalence"][selected_replicas_idxs]
+
+    # normalize the pdf grid so that sum rules are exact
+    Amomentum = momentum_sr
+    Avalence = uvalence_sr + dvalence_sr + svalence_sr
+    Avalence3 = uvalence_sr - dvalence_sr
+    Avalence8 = uvalence_sr + dvalence_sr - 2 * svalence_sr
+
+    pdf_grid[
+        :, [FLAVOUR_TO_ID_MAPPING["\Sigma"], FLAVOUR_TO_ID_MAPPING["g"]], :
+    ] /= Amomentum[:, None, None]
+    pdf_grid[:, [FLAVOUR_TO_ID_MAPPING["V"]], :] *= 3 / Avalence[:, None, None]
+    pdf_grid[:, [FLAVOUR_TO_ID_MAPPING["V3"]], :] *= 1 / Avalence3[:, None, None]
+    pdf_grid[:, [FLAVOUR_TO_ID_MAPPING["V8"]], :] *= 3 / Avalence8[:, None, None]
+
+    return pdf_grid
+
+
+def wmin_pdfbasis_normalization(pdf_grid, pdf_basis="intrinsic_charm"):
+    """
+    Imposes certain conditions on the 14 PDF flavours in the evolution basis.
+
+    Intrinsic charm basis:
+    V = V15 = V24 = V35 and Sigma = T24 = T35, this means that
+    in this basis we have 8 independent PDF flavours (photon is zero).
+
+    Perturbative charm basis:
+    V = V15 = V24 = V35 and Sigma = T15 = T24 = T35, this means that
+    in this basis we have 7 independent PDF flavours (photon is zero).
+
+    Parameters
+    ----------
+    pdf_grid: np.array, shape (Nreplicas x Nfl x Ngrid)
+
+    pdf_basis: str, default is "intrinsic_charm"
+        The PDF basis to normalize to, can be either "intrinsic_charm" or "perturbative_charm".
+
+
+    Returns
+    -------
+    np.array, an array of shape (Nreplicas x Nfl x Ngrid)
+    """
+    # check if the pdf_basis is valid
+    if pdf_basis not in ["intrinsic_charm", "perturbative_charm"]:
+        raise ValueError(
+            f"pdf_basis must be either 'intrinsic_charm' or 'perturbative_charm', got {pdf_basis}"
+        )
+
+    sigma = pdf_grid[:, FLAVOUR_TO_ID_MAPPING["\Sigma"], :]
+    valence = pdf_grid[:, FLAVOUR_TO_ID_MAPPING["V"], :]
+
+    if pdf_basis == "intrinsic_charm":
+        # impose the intrinsic charm basis: V = V15 = V24 = V35 and Sigma = T24 = T35
+        pdf_grid[:, FLAVOUR_TO_ID_MAPPING["V15"], :] = valence
+        pdf_grid[:, FLAVOUR_TO_ID_MAPPING["V24"], :] = valence
+        pdf_grid[:, FLAVOUR_TO_ID_MAPPING["V35"], :] = valence
+        pdf_grid[:, FLAVOUR_TO_ID_MAPPING["T24"], :] = sigma
+        pdf_grid[:, FLAVOUR_TO_ID_MAPPING["T35"], :] = sigma
+
+    elif pdf_basis == "perturbative_charm":
+        # impose the perturbative charm basis: V = V15 = V24 = V35 and Sigma = T15 = T24 = T35
+        pdf_grid[:, FLAVOUR_TO_ID_MAPPING["V15"], :] = valence
+        pdf_grid[:, FLAVOUR_TO_ID_MAPPING["V24"], :] = valence
+        pdf_grid[:, FLAVOUR_TO_ID_MAPPING["V35"], :] = valence
+        pdf_grid[:, FLAVOUR_TO_ID_MAPPING["T15"], :] = sigma
+        pdf_grid[:, FLAVOUR_TO_ID_MAPPING["T24"], :] = sigma
+        pdf_grid[:, FLAVOUR_TO_ID_MAPPING["T35"], :] = sigma
+
+    return pdf_grid
+
+
+def wmin_basis_pdf_grid(
+    pdfs_sum_rules,
+    pdf_basis="intrinsic_charm",
+    Q=1.65,
+    xgrid=LHAPDF_XGRID,
+    sum_rule_atol=1e-2,
+):
+    """
     Returns a pdf grid of dimension (Nreplicas x Nfl x Ngrid) that combines all the replicas from
-    different PDF sets at the given scale Q
+    different PDF sets at the given scale Q.
+    The function also ensures that the sum rules are satisfied exactly and that the pdf basis is consistent.
+
+    The function returns a pdf grid of dimension (Nreplicas x Nfl x Ngrid) that combines the replicas
+    from the specified PDF sets following this rules:
+
+    1. Select replicas that pass all sum rules simultaneously. Some replicas might not be integrable at the given scale Q
+    hence we need would not be able to normalize them to satisfy the sum rules.
+    2. Normalises the basis so that it is consistent with the chosen PDF Basis, e.g. Intrinsic or Perturbative charm.
+    3. Normalises replicas so that sum rules hold exactly.
+    4. Combines replicas from different PDF sets into a single grid at the given scale Q.
 
     Parameters
     ----------
@@ -100,96 +243,39 @@ def basis_replica_selector(
 
         for pdf, sr in sr_dict.items():
 
-            momentum_sr = sr["momentum"]
-            uvalence_sr = sr["uvalence"]
-            dvalence_sr = sr["dvalence"]
-            svalence_sr = sr["svalence"]
-            cvalence_sr = sr["cvalence"]
-
-            momentum_sr_idx = np.where(
-                np.isclose(
-                    momentum_sr,
-                    KNOWN_SUM_RULES_EXPECTED["momentum"],
-                    atol=sum_rule_atol,
-                )
-            )[0]
-            uvalence_sr_idx = np.where(
-                np.isclose(
-                    uvalence_sr,
-                    KNOWN_SUM_RULES_EXPECTED["uvalence"],
-                    atol=sum_rule_atol,
-                )
-            )[0]
-            dvalence_sr_idx = np.where(
-                np.isclose(
-                    dvalence_sr,
-                    KNOWN_SUM_RULES_EXPECTED["dvalence"],
-                    atol=sum_rule_atol,
-                )
-            )[0]
-            svalence_sr_idx = np.where(
-                np.isclose(
-                    svalence_sr,
-                    KNOWN_SUM_RULES_EXPECTED["svalence"],
-                    atol=sum_rule_atol,
-                )
-            )[0]
-            cvalence_sr_idx = np.where(
-                np.isclose(
-                    cvalence_sr,
-                    KNOWN_SUM_RULES_EXPECTED["cvalence"],
-                    atol=sum_rule_atol,
-                )
-            )[0]
-
             # Select replicas that pass all sum rules simultaneously
-            selected_replicas_idxs = np.intersect1d(
-                np.intersect1d(
-                    np.intersect1d(
-                        np.intersect1d(momentum_sr_idx, uvalence_sr_idx),
-                        dvalence_sr_idx,
-                    ),
-                    svalence_sr_idx,
-                ),
-                cvalence_sr_idx,
+            # Note: this is needed as otherwise some PDF replicas, even when explicitly normalized, might not satisfy the sum rules
+            selected_replicas_idxs = wmin_basis_replica_selector(
+                sr, sum_rule_atol=sum_rule_atol
             )
+            if len(selected_replicas_idxs) == 0:
+                log.warning(
+                    "No replicas pass the sum rule tolerance, either adjust the tolerance or change the set"
+                )
+                raise ValueError("Tolerance not reached by any replica")
 
             log.info(
                 f"Selected {len(selected_replicas_idxs)} replicas for {pdf} that pass all sum rules simultaneously"
             )
 
-            # Calculate the pdf grid for the selected replicas at the given scale Q and xgrid
+            # Calculate the pdf grid at the given scale Q and xgrid
             pdf_grid = convolution.evolution.grid_values(
                 PDF(pdf), convolution.FK_FLAVOURS, xgrid, [Q]
             ).squeeze(-1)[selected_replicas_idxs]
 
-            # normalize the pdf grid so that sum rules are exact
-            Amomentum = momentum_sr[selected_replicas_idxs]
-            Avalence = (
-                uvalence_sr[selected_replicas_idxs]
-                + dvalence_sr[selected_replicas_idxs]
-                + svalence_sr[selected_replicas_idxs]
+            # Normalize the pdf grid so that sum rules are exact
+            pdf_grid = wmin_basis_sum_rules_normalization(
+                pdf_grid,
+                sum_rule_dict=sr,
+                selected_replicas_idxs=selected_replicas_idxs,
             )
-            Avalence3 = (
-                uvalence_sr[selected_replicas_idxs]
-                - dvalence_sr[selected_replicas_idxs]
-            )
-            Avalence8 = (
-                uvalence_sr[selected_replicas_idxs]
-                + dvalence_sr[selected_replicas_idxs]
-                - 2 * svalence_sr[selected_replicas_idxs]
-            )
+            log.info(f"Normalized the {str(pdf)} grid so that sum rules are exact")
 
-            pdf_grid[
-                :, [FLAVOUR_TO_ID_MAPPING["\Sigma"], FLAVOUR_TO_ID_MAPPING["g"]], :
-            ] /= Amomentum[:, None, None]
-            pdf_grid[:, [FLAVOUR_TO_ID_MAPPING["V"]], :] *= 3 / Avalence[:, None, None]
-            pdf_grid[:, [FLAVOUR_TO_ID_MAPPING["V3"]], :] *= (
-                1 / Avalence3[:, None, None]
-            )
-            pdf_grid[:, [FLAVOUR_TO_ID_MAPPING["V8"]], :] *= (
-                3 / Avalence8[:, None, None]
-            )
+            # Normalize the pdf grid so that pdf basis is consistent with the chosen PDF Basis
+            # Note: pdf basis normalisation is done after sum rule normalisation. This is because the sum rule normalisation
+            # changes the values of V and Sigma
+            pdf_grid = wmin_pdfbasis_normalization(pdf_grid, pdf_basis=pdf_basis)
+            log.info(f"Normalized the {str(pdf)} grid to {pdf_basis} basis")
 
             wmin_basis.append(pdf_grid)
 
@@ -197,7 +283,7 @@ def basis_replica_selector(
 
 
 def write_wmin_basis(
-    basis_replica_selector,
+    wmin_basis_pdf_grid,
     output_path,
     Q=1.65,
     xgrid=LHAPDF_XGRID,
@@ -206,7 +292,6 @@ def write_wmin_basis(
     """
     Writes the wmin basis at the parametrisation scale Q to the output_path.
     """
-    wmin_basis_pdf_grid = basis_replica_selector
 
     replicas_path = str(output_path) + "/replicas"
     if not os.path.exists(replicas_path):
