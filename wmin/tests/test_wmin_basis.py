@@ -5,6 +5,7 @@ Test the wmin.basis module.
 """
 
 import pytest
+from unittest.mock import patch
 import numpy as np
 from numpy.testing import assert_allclose
 
@@ -12,6 +13,7 @@ from wmin.basis import (
     wmin_pdfbasis_normalization,
     wmin_basis_sum_rules_normalization,
     sum_rules_dict,
+    wmin_basis_replica_selector,
 )
 from colibri.constants import FLAVOUR_TO_ID_MAPPING, LHAPDF_XGRID
 from colibri.tests.conftest import TEST_PDFSET
@@ -19,6 +21,87 @@ from colibri.tests.conftest import TEST_PDFSET
 
 from validphys.core import PDF
 from validphys import convolution
+
+
+# mock known sum rules
+MOCK_KNOWN_SUM_RULES_EXPECTED = {
+    "momentum": 1,
+    "uvalence": 0.5,
+    "dvalence": 0.25,
+    "svalence": 0.1,
+    "cvalence": 0.05,
+}
+
+
+@patch("wmin.basis.KNOWN_SUM_RULES_EXPECTED", MOCK_KNOWN_SUM_RULES_EXPECTED)
+def test_correct_replicas_selected():
+
+    # # Define a dictionary with replica values for each sum rule type
+    # mock_known_sum_rules.result = KNOWN_SUM_RULES_EXPECTED
+
+    sum_rule_dict = {
+        "momentum": np.array([1.0, 0.98, 1.01, 1.02]),
+        "uvalence": np.array([0.5, 0.52, 0.49, 0.5]),
+        "dvalence": np.array([0.25, 0.26, 0.24, 0.25]),
+        "svalence": np.array([0.1, 0.1, 0.11, 0.09]),
+        "cvalence": np.array([0.05, 0.04, 0.05, 0.05]),
+    }
+
+    expected_indices = np.array(
+        [0, 2]
+    )  # These replicas should match within default tolerance
+    selected_indices = wmin_basis_replica_selector(sum_rule_dict)
+    np.testing.assert_array_equal(selected_indices, expected_indices)
+
+
+@patch("wmin.basis.KNOWN_SUM_RULES_EXPECTED", MOCK_KNOWN_SUM_RULES_EXPECTED)
+def test_no_replicas_selected():
+    sum_rule_dict = {
+        "momentum": np.array([0.9, 0.95, 0.8]),
+        "uvalence": np.array([0.4, 0.3, 0.35]),
+        "dvalence": np.array([0.2, 0.1, 0.15]),
+        "svalence": np.array([0.05, 0.07, 0.03]),
+        "cvalence": np.array([0.02, 0.01, 0.03]),
+    }
+
+    selected_indices = wmin_basis_replica_selector(sum_rule_dict)
+    assert len(selected_indices) == 0  # Expect no replicas to pass
+
+
+@patch("wmin.basis.KNOWN_SUM_RULES_EXPECTED", MOCK_KNOWN_SUM_RULES_EXPECTED)
+def test_all_replicas_selected():
+    sum_rule_dict = {
+        "momentum": np.array([1.0, 1.0, 1.0]),
+        "uvalence": np.array([0.5, 0.5, 0.5]),
+        "dvalence": np.array([0.25, 0.25, 0.25]),
+        "svalence": np.array([0.1, 0.1, 0.1]),
+        "cvalence": np.array([0.05, 0.05, 0.05]),
+    }
+
+    expected_indices = np.array([0, 1, 2])
+    selected_indices = wmin_basis_replica_selector(sum_rule_dict)
+    np.testing.assert_array_equal(selected_indices, expected_indices)
+
+
+@patch("wmin.basis.KNOWN_SUM_RULES_EXPECTED", MOCK_KNOWN_SUM_RULES_EXPECTED)
+def test_different_tolerance():
+    sum_rule_dict = {
+        "momentum": np.array([1.0, 0.98, 1.01, 1.02]),
+        "uvalence": np.array([0.5, 0.52, 0.49, 0.5]),
+        "dvalence": np.array([0.25, 0.26, 0.24, 0.25]),
+        "svalence": np.array([0.1, 0.1, 0.11, 0.09]),
+        "cvalence": np.array([0.05, 0.04, 0.05, 0.05]),
+    }
+
+    selected_indices_default_tol = wmin_basis_replica_selector(sum_rule_dict)
+    assert len(selected_indices_default_tol) == 2  # Should return some replicas
+
+    selected_indices_high_tol = wmin_basis_replica_selector(
+        sum_rule_dict, sum_rule_atol=0.05
+    )
+    np.testing.assert_array_equal(
+        selected_indices_high_tol, np.array([0, 1, 2, 3])
+    )  # All replicas pass with high tolerance
 
 
 @pytest.mark.parametrize("pdf_basis", ["intrinsic_charm", "perturbative_charm"])
