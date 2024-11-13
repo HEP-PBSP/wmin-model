@@ -248,6 +248,11 @@ def wmin_basis_pdf_grid(
             selected_replicas_idxs = wmin_basis_replica_selector(
                 sr, sum_rule_atol=sum_rule_atol
             )
+            if len(selected_replicas_idxs) == 0:
+                log.warning(
+                    "No replicas pass the sum rule tolerance, either adjust the tolerance or change the set"
+                )
+                raise ValueError("Tolerance not reached by any replica")
 
             log.info(
                 f"Selected {len(selected_replicas_idxs)} replicas for {pdf} that pass all sum rules simultaneously"
