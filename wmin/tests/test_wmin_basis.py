@@ -5,6 +5,7 @@ Test the wmin.basis module.
 """
 
 import pytest
+import unittest
 from unittest.mock import patch
 import numpy as np
 from numpy.testing import assert_allclose
@@ -145,6 +146,25 @@ def test_wmin_pdfbasis_normalization(pdf_basis):
         assert_allclose(pdf_grid_normalized[:, FLAVOUR_TO_ID_MAPPING["T15"], :], sigma)
         assert_allclose(pdf_grid_normalized[:, FLAVOUR_TO_ID_MAPPING["T24"], :], sigma)
         assert_allclose(pdf_grid_normalized[:, FLAVOUR_TO_ID_MAPPING["T35"], :], sigma)
+
+
+@pytest.mark.parametrize(
+    "pdf_basis",
+    [
+        "random_basis",
+    ],
+)
+def test_wmin_pdfbasis_normalization_raise_error(pdf_basis):
+    """
+    Test that the PDF-basis, intrinsic and perturbative charm, normalisation
+    works as expected.
+    """
+    pdf_grid = np.random.rand(100, 14, 50)
+
+    with unittest.TestCase().assertRaises(ValueError):
+        pdf_grid_normalized = wmin_pdfbasis_normalization(
+            pdf_grid=pdf_grid, pdf_basis=pdf_basis
+        )
 
 
 def test_wmin_basis_sum_rules_normalization():
