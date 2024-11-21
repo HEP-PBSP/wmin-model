@@ -33,9 +33,8 @@ dataspecs:
       - {dataset: HERA_NC_318GEV_EAVG_BOTTOM-SIGMARED, variant: legacy}
 
     prior_settings:
-      type: 'uniform_parameter_prior'            # The type of prior used in Nested Sampling (model dependent)
-      max_val: 10.0
-      min_val: -10.0
+      prior_distribution: 'uniform_parameter_prior'            # The type of prior used in Nested Sampling (model dependent)
+      prior_distribution_specs: {max_val: 10.0, min_val: -10.0}
 
   - speclabel: "Hadronic data"
     dataset_inputs:
