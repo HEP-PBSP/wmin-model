@@ -9,9 +9,8 @@ POSTFIT_EXE = "mc_postfit"
 
 TEST_PRIOR_SETTINGS_WMIN = {
     "prior_settings": {
-        "type": "uniform_parameter_prior",
-        "max_val": 10.0,
-        "min_val": -10.0,
+        "prior_distribution": "uniform_parameter_prior",
+        "prior_distribution": {"max_val": 10.0, "min_val": -10.0},
     }
 }
 
