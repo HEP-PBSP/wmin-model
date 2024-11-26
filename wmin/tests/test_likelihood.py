@@ -85,7 +85,7 @@ def test_likelihood_dis_wmin(wmin_model_settings):
         **{**wmin_model_settings, "output_path": None, "dump_model": False}
     )
     # get bayesian prior
-    prior = bayesian_prior(**TEST_PRIOR_SETTINGS_WMIN)
+    prior = bayesian_prior(TEST_PRIOR_SETTINGS_WMIN)
 
     pred_and_pdf = pdf_model.pred_and_pdf_func(FIT_XGRID, forward_map=forward_map)
 
@@ -144,7 +144,7 @@ def test_likelihood_had_wmin(wmin_model_settings):
     )
 
     # get bayesian prior
-    prior = bayesian_prior(**TEST_PRIOR_SETTINGS_WMIN)
+    prior = bayesian_prior(TEST_PRIOR_SETTINGS_WMIN)
 
     pred_and_pdf = pdf_model.pred_and_pdf_func(FIT_XGRID, forward_map=forward_map)
 
@@ -203,7 +203,7 @@ def test_likelihood_global_wmin(wmin_model_settings):
     )
 
     # get bayesian prior
-    prior = bayesian_prior(**TEST_PRIOR_SETTINGS_WMIN)
+    prior = bayesian_prior(TEST_PRIOR_SETTINGS_WMIN)
 
     pred_and_pdf = pdf_model.pred_and_pdf_func(FIT_XGRID, forward_map=forward_map)
 
