@@ -53,9 +53,8 @@ ns_settings:
     nsteps: 10
 
 prior_settings:
-  type: 'uniform_parameter_prior'            # The type of prior used in Nested Sampling (model dependent)
-  max_val: 10.0
-  min_val: -10.0
+  prior_distribution: 'uniform_parameter_prior'            # The type of prior used in Nested Sampling (model dependent)
+  prior_distribution_specs: {max_val: 10.0, min_val: -10.0}
 
 actions_:
 - likelihood_float_type                       
