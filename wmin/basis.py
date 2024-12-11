@@ -407,9 +407,26 @@ def _get_X_exportgrids(pdfgrid: np.array):
 
 
 def write_pca_basis_exportgrids(
-    fit_path: pathlib.Path, Neig: int, output_path: pathlib.Path
+    fit_path: pathlib.Path,
+    Neig: int,
+    output_path: pathlib.Path,
+    hessian_normalization: bool = False,
 ):
-    """ """
+    """
+    Writes the PCA basis to the output path.
+
+    Parameters
+    ----------
+    fit_path: pathlib.Path
+        The path to the fit containing the replicas.
+    Neig: int
+        The number of PCA basis vectors to write.
+    output_path: pathlib.Path
+        The path to the output directory.
+    hessian_normalization: bool, default is False
+        Whether to normalize the eigenvectors by the square root of the number of
+        replicas minus 1.
+    """
     # Read the exportgrids contained in the replicas folder of the fit_path
     pdf_grid = get_pdfgrid_from_exportgrids(fit_path)
     X = _get_X_exportgrids(
@@ -418,6 +435,9 @@ def write_pca_basis_exportgrids(
     V = _compress_X(X, Neig)
 
     # TODO: normalisation
+    if hessian_normalization:
+        norm = np.sqrt(pdf_grid.shape[0] - 1)
+        V /= norm
 
     # Compute the PCA basis (Z = X @ V), shape is (Nfl * Ngrid, Neig)
     pca_basis = (
@@ -449,7 +469,14 @@ def write_pca_basis_exportgrids(
         )
 
 
-def pca_basis_from_exportgrids(colibri_fit: str, Neig: int, output_path: pathlib.Path):
-    """ """
+def pca_basis_from_exportgrids(
+    colibri_fit: str,
+    Neig: int,
+    output_path: pathlib.Path,
+    hessian_normalization: bool = False,
+):
+    """
+    Writes the PCA basis to the output path.
+    """
     fit_path = get_fit_path(colibri_fit)
-    write_pca_basis_exportgrids(fit_path, Neig, output_path)
+    write_pca_basis_exportgrids(fit_path, Neig, output_path, hessian_normalization)
