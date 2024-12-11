@@ -5,6 +5,9 @@ Test the wmin.basis module.
 """
 
 import pytest
+import shutil
+import pathlib
+import numpy as np
 import unittest
 from unittest.mock import patch
 import numpy as np
@@ -17,6 +20,7 @@ from wmin.basis import (
     wmin_basis_replica_selector,
     wmin_basis_pdf_grid,
     _get_X_exportgrids,
+    mc2_pca,
 )
 from colibri.constants import FLAVOUR_TO_ID_MAPPING, LHAPDF_XGRID
 from colibri.tests.conftest import TEST_PDFSET
@@ -359,3 +363,54 @@ def test_get_X_exportgrids():
         expected_result,
         "The reshaped and mean-subtracted pdfgrid result is incorrect.",
     )
+
+
+def test_mc2_pca():
+    # Mock dependencies
+    mock_pdf = MagicMock()
+    mock_Q = MagicMock()
+    mock_output_path = pathlib.Path("/mock/output/path")
+    mock_gridname = "mock_grid"
+
+    # Mock external functions
+    with patch("pathlib.Path") as MockPath, patch(
+        "wmin.basis.lhaindex.get_lha_datapath", return_value="/mock/lha/path"
+    ), patch("wmin.basis.lhaindex.isinstalled", return_value=False), patch(
+        "shutil.copytree"
+    ), patch(
+        "shutil.rmtree"
+    ), patch(
+        "wmin.basis._create_mc2pca", return_value="/mock/result/path"
+    ) as mock_create_mc2pca, patch(
+        "wmin.basis.mc2hessian_xgrid", return_value="mock_xgrid"
+    ):
+
+        MockPath.return_value = pathlib.Path("/mock/lha/path")
+
+        # Call the function under test
+        mc2_pca(
+            pdf=mock_pdf,
+            Q=mock_Q,
+            Neig=10,
+            output_path=mock_output_path,
+            gridname=mock_gridname,
+            installgrid=True,
+            hessian_normalization=True,
+        )
+
+        # Assertions for _create_mc2pca
+        mock_create_mc2pca.assert_called_once_with(
+            mock_pdf,
+            Q=mock_Q,
+            xgrid="mock_xgrid",
+            Neig=10,
+            output_path=mock_output_path,
+            name=mock_gridname,
+            hessian_normalization=True,
+        )
+
+        # Assertions for installation logic
+        shutil.copytree.assert_called_once_with(
+            "/mock/result/path", pathlib.Path("/mock/lha/path") / mock_gridname
+        )
+        shutil.rmtree.assert_not_called()  # Since isinstalled returns False in this test
