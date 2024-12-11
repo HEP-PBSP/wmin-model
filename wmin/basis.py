@@ -380,3 +380,26 @@ def mc2_pca(
                 dest.unlink()
         shutil.copytree(result_path, dest)
         log.info("Wmin PDF set installed at %s", dest)
+
+
+def _get_X_exportgrids(pdfgrid):
+    """
+    Reshapes the pdf grid to (Nreplicas, Nfl * Ngrid) and subtracts the mean over the replicas.
+
+    Parameters
+    ----------
+    pdfgrid: np.array, shape (Nreplicas, Nfl, Ngrid)
+        The pdf grid in the evolution basis.
+
+    Returns
+    -------
+    np.array, shape (Nfl * Ngrid, Nreplicas)
+        The (replicas) mean subtracted pdf grid reshaped to (Nfl * Ngrid, Nreplicas).
+    """
+    # reshape pdfgrid to (Nreplicas, Nfl * Ngrid)
+    pdfgrid = pdfgrid.reshape(pdfgrid.shape[0], pdfgrid.shape[1] * pdfgrid.shape[2])
+
+    # subtract the mean over the replicas
+    pdfgrid -= pdfgrid.mean(axis=0)
+
+    return pdfgrid.T
