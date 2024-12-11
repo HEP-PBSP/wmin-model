@@ -554,30 +554,6 @@ def _get_X_exportgrids(pdfgrid: np.array):
     return pdfgrid.T
 
 
-def pca_on_exportgrids(X, V):
-    """
-    Given the mean subtracted pdf grid and the eigenvectors of the covariance matrix,
-    perform the linear transformation to the PCA basis.
-
-    Eq. 5 of https://arxiv.org/pdf/1602.00005
-
-    Z = X @ V
-
-    Parameters
-    ----------
-    X: np.array, shape (Nfl * Ngrid, Nreplicas)
-        The mean subtracted pdf grid reshaped to (Nfl * Ngrid, Nreplicas).
-    V: np.array, shape (Nreplicas, Neig)
-        The eigenvectors of the covariance matrix.
-
-    Returns
-    -------
-    np.array, shape (Nfl * Ngrid, Neig)
-        The PCA basis elements.
-    """
-    return X @ V
-
-
 def write_pca_basis_exportgrids(
     fit_path: pathlib.Path, Neig: int, output_path: pathlib.Path
 ):
