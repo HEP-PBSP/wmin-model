@@ -23,6 +23,7 @@ from wmin.basis import (
     _get_X_exportgrids,
     mc2_pca,
     write_pca_basis_exportgrids,
+    pca_basis_from_exportgrids,
 )
 from colibri.constants import FLAVOUR_TO_ID_MAPPING, LHAPDF_XGRID, EXPORT_LABELS
 from colibri.tests.conftest import TEST_PDFSET
@@ -487,3 +488,34 @@ def test_write_pca_basis_exportgrids():
                 mock_write_exportgrid.call_args_list[i][1]["export_labels"]
                 == EXPORT_LABELS
             )
+
+
+def test_pca_basis_from_exportgrids():
+    # Mock dependencies
+    mock_colibri_fit = "mock_colibri_fit"
+    mock_fit_path = pathlib.Path("/mock/fit/path")
+    mock_output_path = pathlib.Path("/mock/output/path")
+    mock_Neig = 3
+
+    # Mock external functions
+    with patch(
+        "wmin.basis.get_fit_path", return_value=mock_fit_path
+    ) as mock_get_fit_path, patch(
+        "wmin.basis.write_pca_basis_exportgrids"
+    ) as mock_write_pca_basis_exportgrids:
+
+        # Call the function under test
+        pca_basis_from_exportgrids(
+            colibri_fit=mock_colibri_fit,
+            Neig=mock_Neig,
+            output_path=mock_output_path,
+            hessian_normalization=True,
+        )
+
+        # Assertions for get_fit_path
+        mock_get_fit_path.assert_called_once_with(mock_colibri_fit)
+
+        # Assertions for write_pca_basis_exportgrids
+        mock_write_pca_basis_exportgrids.assert_called_once_with(
+            mock_fit_path, mock_Neig, mock_output_path, True
+        )
