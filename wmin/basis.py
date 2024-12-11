@@ -321,7 +321,7 @@ def write_wmin_basis(
     )
 
 
-def _create_mc2hessian(
+def _create_mc2pca(
     pdf, Q, xgrid, Neig, output_path, name=None, hessian_normalization=False
 ):
     """
@@ -356,7 +356,7 @@ def mc2_pca(
     Note: mc2hessian_xgrid is taken as the default xgrid that is returned by validphys.mc2hessian.mc2hessian_xgrid
     """
     log.warning("Using default xgrid from mc2hessian_xgrid for PCA.")
-    result_path = _create_mc2hessian(
+    result_path = _create_mc2pca(
         pdf,
         Q=Q,
         xgrid=mc2hessian_xgrid(),
