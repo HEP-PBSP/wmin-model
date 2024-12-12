@@ -1,6 +1,6 @@
 replica_range_settings:
-  min_replica: 101
-  max_replica: 201
+  min_replica: 1
+  max_replica: 101
 
 
 #N_reps: 80000
@@ -11,7 +11,7 @@ activations: ["tanh", "tanh", "linear"]
 initializer_name: glorot_normal
 layer_type: dense
 
-
+theoryid: 700
 
 actions_:
   - write_n3fit_basis
