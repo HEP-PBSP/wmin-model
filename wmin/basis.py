@@ -12,6 +12,7 @@ import os
 import pathlib
 import shutil
 
+import tensorflow as tf
 from reportengine import collect
 
 from validphys.sumrules import sum_rules, KNOWN_SUM_RULES_EXPECTED
@@ -25,6 +26,7 @@ from validphys.mc2hessian import (
     mc2hessian_xgrid,
 )
 from validphys.checks import check_pdf_is_montecarlo
+from n3fit.model_gen import pdfNN_layer_generator
 
 from colibri.constants import (
     LHAPDF_XGRID,
@@ -35,6 +37,58 @@ from colibri.export_results import write_exportgrid
 
 
 log = logging.getLogger(__name__)
+
+
+FLAV_INFO_NNPDF40 = [
+    {
+        "fl": "sng",
+        "trainable": False,
+        "smallx": [1.089, 1.119],
+        "largex": [1.475, 3.119],
+    },
+    {
+        "fl": "g",
+        "trainable": False,
+        "smallx": [0.7504, 1.098],
+        "largex": [2.814, 5.669],
+    },
+    {
+        "fl": "v",
+        "trainable": False,
+        "smallx": [0.479, 0.7384],
+        "largex": [1.549, 3.532],
+    },
+    {
+        "fl": "v3",
+        "trainable": False,
+        "smallx": [0.1073, 0.4397],
+        "largex": [1.733, 3.458],
+    },
+    {
+        "fl": "v8",
+        "trainable": False,
+        "smallx": [0.5507, 0.7837],
+        "largex": [1.516, 3.356],
+    },
+    {
+        "fl": "t3",
+        "trainable": False,
+        "smallx": [-0.4506, 0.9305],
+        "largex": [1.745, 3.424],
+    },
+    {
+        "fl": "t8",
+        "trainable": False,
+        "smallx": [0.5877, 0.8687],
+        "largex": [1.522, 3.515],
+    },
+    {
+        "fl": "t15",
+        "trainable": False,
+        "smallx": [1.089, 1.141],
+        "largex": [1.492, 3.222],
+    },
+]
 
 
 def sum_rules_dict(pdf, Q=1.65):
@@ -380,3 +434,62 @@ def mc2_pca(
                 dest.unlink()
         shutil.copytree(result_path, dest)
         log.info("Wmin PDF set installed at %s", dest)
+
+
+def n3fit_pdf_model(
+    flav_info: list = FLAV_INFO_NNPDF40,
+    N_reps: int = 1000,
+    impose_sumrule: bool = True,
+    fitbasis: str = "EVOL",
+    nodes: list = [25, 20, 8],
+    activations: list = ["tanh", "tanh", "linear"],
+    initializer_name: str = "glorot_normal",
+    layer_type: str = "dense",
+):
+    """
+    Wrapper function to generate a PDF model using the n3fit model generator.
+    """
+    pdf_model = pdfNN_layer_generator(
+        nodes=nodes,
+        activations=activations,
+        initializer_name=initializer_name,
+        layer_type=layer_type,
+        seed=range(0, N_reps),
+        impose_sumrule=impose_sumrule,
+        flav_info=flav_info,
+        fitbasis=fitbasis,
+        num_replicas=N_reps,
+    )
+    return pdf_model
+
+
+def n3fit_pdf_grid(n3fit_pdf_model, xgrid=LHAPDF_XGRID):
+    """
+    Returns the PDF grid for the n3fit model.
+    """
+    xgrid = tf.convert_to_tensor(np.array(xgrid)[None, :, None])
+    input = {"pdf_input": xgrid, "xgrid_integration": n3fit_pdf_model.x_in}
+
+    pdf_grid = tf.squeeze(n3fit_pdf_model(input), axis=0)
+    return np.array(
+        tf.reshape(pdf_grid, (pdf_grid.shape[0], pdf_grid.shape[2], pdf_grid.shape[1]))
+    )
+
+
+def write_n3fit_basis(
+    n3fit_pdf_grid,
+    output_path,
+    Q=1.65,
+    xgrid=LHAPDF_XGRID,
+    export_labels=EXPORT_LABELS,
+):
+    """
+    Wrapper of write wmin basis for n3fit basis.
+    """
+    write_wmin_basis(
+        n3fit_pdf_grid,
+        output_path,
+        Q=Q,
+        xgrid=xgrid,
+        export_labels=export_labels,
+    )

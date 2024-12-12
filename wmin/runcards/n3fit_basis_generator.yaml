@@ -1,0 +1,10 @@
+N_reps: 1000
+impose_sumrule: true
+fitbasis: EVOL
+nodes: [25, 20, 8]
+activations: ["tanh", "tanh", "linear"]
+initializer_name: glorot_normal
+layer_type: dense
+
+actions_:
+  - write_n3fit_basis
