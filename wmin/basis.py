@@ -486,9 +486,7 @@ def n3fit_pdf_grid(n3fit_pdf_model, xgrid=LHAPDF_XGRID):
     input = {"pdf_input": xgrid, "xgrid_integration": n3fit_pdf_model.x_in}
 
     pdf_grid = tf.squeeze(n3fit_pdf_model(input), axis=0)
-    return np.array(
-        tf.reshape(pdf_grid, (pdf_grid.shape[0], pdf_grid.shape[2], pdf_grid.shape[1]))
-    )
+    return np.array(tf.transpose(pdf_grid, perm=[0, 2, 1]))
 
 
 def write_n3fit_basis(
