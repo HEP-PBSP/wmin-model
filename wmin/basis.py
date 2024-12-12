@@ -342,6 +342,7 @@ def write_wmin_basis(
     Q=1.65,
     xgrid=LHAPDF_XGRID,
     export_labels=EXPORT_LABELS,
+    replica_range_settings=None,
 ):
     """
     Writes the wmin basis at the parametrisation scale Q to the output_path.
@@ -351,7 +352,16 @@ def write_wmin_basis(
     if not os.path.exists(replicas_path):
         os.mkdir(replicas_path)
 
-    for replica_index in range(1, wmin_basis_pdf_grid.shape[0]):
+    if replica_range_settings is not None:
+        replica_range = range(
+            replica_range_settings["min_replica"], replica_range_settings["max_replica"]
+        )
+        grid_index_range = range(1, wmin_basis_pdf_grid.shape[0])
+    else:
+        replica_range = range(1, wmin_basis_pdf_grid.shape[0])
+        grid_index_range = range(1, wmin_basis_pdf_grid.shape[0])
+
+    for replica_index, grid_index in zip(replica_range, grid_index_range):
 
         rep_path = replicas_path + f"/replica_{replica_index}"
         if not os.path.exists(rep_path):
@@ -361,7 +371,7 @@ def write_wmin_basis(
         grid_name = rep_path + "/" + fit_name
 
         write_exportgrid(
-            grid_for_writing=wmin_basis_pdf_grid[replica_index],
+            grid_for_writing=wmin_basis_pdf_grid[grid_index],
             grid_name=grid_name,
             replica_index=replica_index,
             Q=Q,
@@ -438,7 +448,7 @@ def mc2_pca(
 
 def n3fit_pdf_model(
     flav_info: list = FLAV_INFO_NNPDF40,
-    N_reps: int = 1000,
+    replica_range_settings: dict = {"min_replica": 1, "max_replica": 1000},
     impose_sumrule: bool = True,
     fitbasis: str = "EVOL",
     nodes: list = [25, 20, 8],
@@ -454,11 +464,16 @@ def n3fit_pdf_model(
         activations=activations,
         initializer_name=initializer_name,
         layer_type=layer_type,
-        seed=range(0, N_reps),
+        seed=range(
+            replica_range_settings["min_replica"],
+            replica_range_settings["max_replica"] + 1,
+        ),
         impose_sumrule=impose_sumrule,
         flav_info=flav_info,
         fitbasis=fitbasis,
-        num_replicas=N_reps,
+        num_replicas=replica_range_settings["max_replica"]
+        - replica_range_settings["min_replica"]
+        + 1,
     )
     return pdf_model
 
@@ -482,6 +497,7 @@ def write_n3fit_basis(
     Q=1.65,
     xgrid=LHAPDF_XGRID,
     export_labels=EXPORT_LABELS,
+    replica_range_settings=None,
 ):
     """
     Wrapper of write wmin basis for n3fit basis.
@@ -492,4 +508,5 @@ def write_n3fit_basis(
         Q=Q,
         xgrid=xgrid,
         export_labels=export_labels,
+        replica_range_settings=replica_range_settings,
     )
