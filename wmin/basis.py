@@ -449,7 +449,7 @@ def mc2_pca(
 def n3fit_pdf_model(
     flav_info: list = FLAV_INFO_NNPDF40,
     replica_range_settings: dict = {"min_replica": 1, "max_replica": 1000},
-    impose_sumrule: bool = True,
+    impose_sumrule: str = "ALL",
     fitbasis: str = "EVOL",
     nodes: list = [25, 20, 8],
     activations: list = ["tanh", "tanh", "linear"],
