@@ -34,6 +34,7 @@ from colibri.constants import (
     FLAVOUR_TO_ID_MAPPING,
 )
 from colibri.export_results import write_exportgrid
+from wmin.utils import arclength_pdfgrid, arclength_outliers
 
 
 log = logging.getLogger(__name__)
@@ -478,7 +479,9 @@ def n3fit_pdf_model(
     return pdf_model
 
 
-def n3fit_pdf_grid(n3fit_pdf_model, xgrid=LHAPDF_XGRID):
+def n3fit_pdf_grid(
+    n3fit_pdf_model, xgrid=LHAPDF_XGRID, filter_arclength_outliers: bool = True
+):
     """
     Returns the PDF grid for the n3fit model.
     """
@@ -486,7 +489,20 @@ def n3fit_pdf_grid(n3fit_pdf_model, xgrid=LHAPDF_XGRID):
     input = {"pdf_input": xgrid, "xgrid_integration": n3fit_pdf_model.x_in}
 
     pdf_grid = tf.squeeze(n3fit_pdf_model(input), axis=0)
-    return np.array(tf.transpose(pdf_grid, perm=[0, 2, 1]))
+
+    pdf_array = np.array(tf.transpose(pdf_grid, perm=[0, 2, 1]))
+
+    if filter_arclength_outliers:
+        replicas_arclengths = arclength_pdfgrid(xgrid.numpy().squeeze(), pdf_array)
+        # find outliers based on arclength interquartile range
+        outliers = arclength_outliers(replicas_arclengths)
+
+        log.info(f"Found {len(outliers)} arclength outliers in the PDF grid")
+
+        # delete outliers from the grid
+        pdf_array = np.delete(pdf_array, outliers, axis=0)
+
+    return pdf_array
 
 
 def write_n3fit_basis(
