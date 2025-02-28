@@ -9,6 +9,7 @@ import logging
 
 import jax
 import pandas as pd
+import numpy as np
 from colibri.loss_functions import chi2
 from colibri.ultranest_fit import UltraNestLogLikelihood
 from reportengine.table import table
@@ -132,3 +133,51 @@ def likelihood_time(
         index=["wmin"],
     )
     return df
+
+
+def arclength_pdfgrid(xgrid: np.array, pdf_grid: np.array) -> np.array:
+    """
+    Calculate the arclength of the PDF grid.
+
+    Parameters
+    ----------
+    xgrid: np.array
+        array of shape (N_x, )
+    pdf_grid: np.array
+        array of shape (N_rep, N_fl, N_x)
+
+    Returns
+    -------
+    np.array
+        array of shape (N_rep, )
+    """
+    dx = np.diff(xgrid)
+    dpdf = np.diff(pdf_grid, axis=-1)
+    return np.sum(np.sum(np.sqrt(dx**2 + dpdf**2), axis=-1), axis=-1)
+
+
+def arclength_outliers(arclength_pdfgrid: np.array) -> np.array:
+    """
+    Find the outliers in the arclength of the PDF grid using the interquartile range.
+
+    Parameters
+    ----------
+    arclength_pdfgrid: np.array
+        array of shape (N_rep, )
+
+    Returns
+    -------
+    np.array
+        array of shape (N_outliers, )
+    """
+    # Identify outlier replicas based on arclength and using interquartile range
+    Q1 = np.percentile(arclength_pdfgrid, 25)
+    Q3 = np.percentile(arclength_pdfgrid, 75)
+    IQR = Q3 - Q1
+    lower_bound = Q1 - 1.5 * IQR
+    upper_bound = Q3 + 1.5 * IQR
+
+    outliers = np.where(
+        (arclength_pdfgrid < lower_bound) | (arclength_pdfgrid > upper_bound)
+    )[0]
+    return outliers
