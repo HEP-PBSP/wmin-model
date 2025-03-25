@@ -16,6 +16,7 @@ from wmin.basis import (
     sum_rules_dict,
     wmin_basis_replica_selector,
     wmin_basis_pdf_grid,
+    _get_X_exportgrids,
 )
 from colibri.constants import FLAVOUR_TO_ID_MAPPING, LHAPDF_XGRID
 from colibri.tests.conftest import TEST_PDFSET
@@ -331,3 +332,30 @@ def test_wmin_basis_pdf_grid_normalization_calls(
     # Check that the sum rule normalization was called with the expected parameters
     mock_sum_rules_normalization.assert_called()
     mock_basis_normalization.assert_called()
+
+
+def test_get_X_exportgrids():
+    """
+    Test the _get_X_exportgrids function to ensure it correctly reshapes and subtracts the mean of the pdfgrid.
+    """
+    # Mock input data
+    pdfgrid = np.array(
+        [
+            [[1.0, 2.0], [3.0, 4.0]],
+            [[5.0, 6.0], [7.0, 8.0]],
+        ]
+    )  # Shape (2, 2, 2)
+
+    # Expected output
+    reshaped_pdfgrid = pdfgrid.reshape(2, 4)  # Shape (2, 4)
+    mean_subtracted_pdfgrid = reshaped_pdfgrid - reshaped_pdfgrid.mean(axis=0)
+    expected_result = mean_subtracted_pdfgrid.T  # Shape (4, 2)
+    # Call the function under test
+    result = _get_X_exportgrids(pdfgrid)
+
+    # Assertions
+    np.testing.assert_array_equal(
+        result,
+        expected_result,
+        "The reshaped and mean-subtracted pdfgrid result is incorrect.",
+    )
