@@ -33,13 +33,11 @@ from colibri.constants import (
     EXPORT_LABELS,
     FLAVOUR_TO_ID_MAPPING,
 )
-<<<<<<< HEAD
-from colibri.export_results import write_exportgrid
+
 from wmin.utils import arclength_pdfgrid, arclength_outliers
-=======
 from colibri.export_results import write_exportgrid, get_pdfgrid_from_exportgrids
 from colibri.utils import get_fit_path
->>>>>>> 78ca9dc (added pca tools)
+
 
 
 log = logging.getLogger(__name__)
