@@ -33,8 +33,13 @@ from colibri.constants import (
     EXPORT_LABELS,
     FLAVOUR_TO_ID_MAPPING,
 )
+<<<<<<< HEAD
 from colibri.export_results import write_exportgrid
 from wmin.utils import arclength_pdfgrid, arclength_outliers
+=======
+from colibri.export_results import write_exportgrid, get_pdfgrid_from_exportgrids
+from colibri.utils import get_fit_path
+>>>>>>> 78ca9dc (added pca tools)
 
 
 log = logging.getLogger(__name__)
@@ -526,7 +531,7 @@ def write_n3fit_basis(
     )
 
 
-def _get_X_exportgrids(pdfgrid):
+def _get_X_exportgrids(pdfgrid: np.array):
     """
     Reshapes the pdf grid to (Nreplicas, Nfl * Ngrid) and subtracts the mean over the replicas.
 
@@ -547,3 +552,76 @@ def _get_X_exportgrids(pdfgrid):
     pdfgrid -= pdfgrid.mean(axis=0)
 
     return pdfgrid.T
+
+
+def pca_on_exportgrids(X, V):
+    """
+    Given the mean subtracted pdf grid and the eigenvectors of the covariance matrix,
+    perform the linear transformation to the PCA basis.
+
+    Eq. 5 of https://arxiv.org/pdf/1602.00005
+
+    Z = X @ V
+
+    Parameters
+    ----------
+    X: np.array, shape (Nfl * Ngrid, Nreplicas)
+        The mean subtracted pdf grid reshaped to (Nfl * Ngrid, Nreplicas).
+    V: np.array, shape (Nreplicas, Neig)
+        The eigenvectors of the covariance matrix.
+
+    Returns
+    -------
+    np.array, shape (Nfl * Ngrid, Neig)
+        The PCA basis elements.
+    """
+    return X @ V
+
+
+def write_pca_basis_exportgrids(
+    fit_path: pathlib.Path, Neig: int, output_path: pathlib.Path
+):
+    """ """
+    # Read the exportgrids contained in the replicas folder of the fit_path
+    pdf_grid = get_pdfgrid_from_exportgrids(fit_path)
+    X = _get_X_exportgrids(
+        pdf_grid.copy()
+    )  # copy to avoid modifying the original pdf_grid
+    V = _compress_X(X, Neig)
+
+    # TODO: normalisation
+
+    # Compute the PCA basis (Z = X @ V), shape is (Nfl * Ngrid, Neig)
+    pca_basis = (
+        X @ V
+        + pdf_grid.mean(axis=0).reshape(pdf_grid.shape[1] * pdf_grid.shape[2])[:, None]
+    )
+
+    # Copy input runcard to the output path (needed eg for evolution)
+    if not os.path.exists(output_path / "input"):
+        os.makedirs(output_path / "input", exist_ok=True)
+    shutil.copy(fit_path / "input/runcard.yaml", output_path / "input/runcard.yaml")
+
+    # Write the PCA basis to the output path
+    if not os.path.exists(output_path / "replicas"):
+        os.mkdir(output_path / "replicas")
+
+    for i, pca_vec in enumerate(pca_basis.T):
+        exportgrid_path = output_path / f"replicas/replica_{i+1}"
+        if not os.path.exists(exportgrid_path):
+            os.mkdir(exportgrid_path)
+
+        write_exportgrid(
+            grid_for_writing=pca_vec.reshape(pdf_grid.shape[1], pdf_grid.shape[2]),
+            grid_name=exportgrid_path / output_path.name,
+            replica_index=i + 1,
+            Q=1.65,
+            xgrid=LHAPDF_XGRID,
+            export_labels=EXPORT_LABELS,
+        )
+
+
+def pca_basis_from_exportgrids(colibri_fit: str, Neig: int, output_path: pathlib.Path):
+    """ """
+    fit_path = get_fit_path(colibri_fit)
+    write_pca_basis_exportgrids(fit_path, Neig, output_path)
