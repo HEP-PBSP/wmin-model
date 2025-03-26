@@ -27,8 +27,10 @@ positivity:                            # Positivity datasets, used in the positi
   posdatasets:
   - {dataset: POSF2U, maxlambda: 1e6}
 
-alpha: 1e-7                           
-lambda_positivity: 0                 
+positivity_penalty_settings:
+  positivity_penalty: False
+  alpha: 1e-7                           
+  lambda_positivity: 0                 
 
 use_fit_t0: True                       # Whether the t0 covariance is used in the chi2 loss.
 t0pdfset: NNPDF40_nnlo_as_01180         # The t0 PDF used to build the t0 covariance matrix.
@@ -60,9 +62,8 @@ ns_settings:
     frac_remain: 0.01
 
 prior_settings:
-  type: 'uniform_parameter_prior'
-  max_val: 2
-  min_val: -2
+  prior_distribution: 'uniform_parameter_prior'
+  prior_distribution_specs: {max_val: 2, min_val: -2}
 
 actions_:
-- ultranest_fit                        # Choose from ultranest_fit, monte_carlo_fit, analytic_fit
+- run_ultranest_fit                        # Choose from ultranest_fit, monte_carlo_fit, analytic_fit
