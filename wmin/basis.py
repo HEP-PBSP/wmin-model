@@ -406,6 +406,45 @@ def _get_X_exportgrids(pdfgrid: np.array):
     return pdfgrid.T
 
 
+def _get_compressed_pdfgrid(
+    pdf_grid: np.array, Neig: int, hessian_normalization: bool = False
+) -> np.array:
+    """
+    Returns the PCA basis.
+
+    Parameters
+    ----------
+    pdf_grid: np.array
+        The pdf grid in the evolution basis.
+    Neig: int
+        The number of PCA basis vectors to write.
+    hessian_normalization: bool, default is False
+        Whether to normalize the eigenvectors by the square root of the number of
+        replicas minus 1.
+    
+
+    Returns
+    -------
+    np.array
+        The PCA compressed pdf grid.
+    """
+    X = _get_X_exportgrids(
+        pdf_grid.copy()
+    )  # copy to avoid modifying the original pdf_grid
+    V = _compress_X(X, Neig)
+
+    if hessian_normalization:
+        norm = np.sqrt(pdf_grid.shape[0] - 1)
+        V /= norm
+
+    # Compute the PCA basis (Z = X @ V), shape is (Nfl * Ngrid, Neig)
+    pca_basis = (
+        X @ V
+        + pdf_grid.mean(axis=0).reshape(pdf_grid.shape[1] * pdf_grid.shape[2])[:, None]
+    )
+    return pca_basis
+
+
 def write_pca_basis_exportgrids(
     fit_path: pathlib.Path,
     Neig: int,
@@ -427,22 +466,8 @@ def write_pca_basis_exportgrids(
         Whether to normalize the eigenvectors by the square root of the number of
         replicas minus 1.
     """
-    # Read the exportgrids contained in the replicas folder of the fit_path
     pdf_grid = get_pdfgrid_from_exportgrids(fit_path)
-    X = _get_X_exportgrids(
-        pdf_grid.copy()
-    )  # copy to avoid modifying the original pdf_grid
-    V = _compress_X(X, Neig)
-
-    if hessian_normalization:
-        norm = np.sqrt(pdf_grid.shape[0] - 1)
-        V /= norm
-
-    # Compute the PCA basis (Z = X @ V), shape is (Nfl * Ngrid, Neig)
-    pca_basis = (
-        X @ V
-        + pdf_grid.mean(axis=0).reshape(pdf_grid.shape[1] * pdf_grid.shape[2])[:, None]
-    )
+    pca_basis = _get_compressed_pdfgrid(pdf_grid, Neig, hessian_normalization)
 
     # Copy input runcard to the output path (needed eg for evolution)
     if not os.path.exists(output_path / "input"):
