@@ -421,7 +421,7 @@ def _get_compressed_pdfgrid(
     hessian_normalization: bool, default is False
         Whether to normalize the eigenvectors by the square root of the number of
         replicas minus 1.
-    
+
 
     Returns
     -------
