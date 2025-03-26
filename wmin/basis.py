@@ -2,7 +2,7 @@
 wmin.basis.py
 
 This module contains the functions that allow to construct a basis for the wmin parametrisation.
-The main target used for the construction of the basis at this stage is the simultaneous 
+The main target used for the construction of the basis at this stage is the simultaneous
 satisfaction of the momentum, u-valence and d-valence sum rules.
 """
 
@@ -385,7 +385,7 @@ def mc2_pca(
 
 def _get_X_exportgrids(pdfgrid: np.array):
     """
-    Reshapes the pdf grid to (Nreplicas, Nfl * Ngrid) and subtracts the mean over the replicas.
+    Reshapes the pdf grid to (Nfl * Ngrid, Nreplicas) and subtracts the mean over the replicas.
 
     Parameters
     ----------
@@ -434,7 +434,6 @@ def write_pca_basis_exportgrids(
     )  # copy to avoid modifying the original pdf_grid
     V = _compress_X(X, Neig)
 
-    # TODO: normalisation
     if hessian_normalization:
         norm = np.sqrt(pdf_grid.shape[0] - 1)
         V /= norm
