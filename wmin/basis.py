@@ -2,7 +2,7 @@
 wmin.basis.py
 
 This module contains the functions that allow to construct a basis for the wmin parametrisation.
-The main target used for the construction of the basis at this stage is the simultaneous 
+The main target used for the construction of the basis at this stage is the simultaneous
 satisfaction of the momentum, u-valence and d-valence sum rules.
 """
 
@@ -31,7 +31,8 @@ from colibri.constants import (
     EXPORT_LABELS,
     FLAVOUR_TO_ID_MAPPING,
 )
-from colibri.export_results import write_exportgrid
+from colibri.export_results import write_exportgrid, get_pdfgrid_from_exportgrids
+from colibri.utils import get_fit_path
 
 
 log = logging.getLogger(__name__)
@@ -321,7 +322,7 @@ def write_wmin_basis(
     )
 
 
-def _create_mc2hessian(
+def _create_mc2pca(
     pdf, Q, xgrid, Neig, output_path, name=None, hessian_normalization=False
 ):
     """
@@ -356,7 +357,7 @@ def mc2_pca(
     Note: mc2hessian_xgrid is taken as the default xgrid that is returned by validphys.mc2hessian.mc2hessian_xgrid
     """
     log.warning("Using default xgrid from mc2hessian_xgrid for PCA.")
-    result_path = _create_mc2hessian(
+    result_path = _create_mc2pca(
         pdf,
         Q=Q,
         xgrid=mc2hessian_xgrid(),
@@ -380,3 +381,126 @@ def mc2_pca(
                 dest.unlink()
         shutil.copytree(result_path, dest)
         log.info("Wmin PDF set installed at %s", dest)
+
+
+def _get_X_exportgrids(pdfgrid: np.array):
+    """
+    Reshapes the pdf grid to (Nfl * Ngrid, Nreplicas) and subtracts the mean over the replicas.
+
+    Parameters
+    ----------
+    pdfgrid: np.array, shape (Nreplicas, Nfl, Ngrid)
+        The pdf grid in the evolution basis.
+
+    Returns
+    -------
+    np.array, shape (Nfl * Ngrid, Nreplicas)
+        The (replicas) mean subtracted pdf grid reshaped to (Nfl * Ngrid, Nreplicas).
+    """
+    # reshape pdfgrid to (Nreplicas, Nfl * Ngrid)
+    pdfgrid = pdfgrid.reshape(pdfgrid.shape[0], pdfgrid.shape[1] * pdfgrid.shape[2])
+
+    # subtract the mean over the replicas
+    pdfgrid -= pdfgrid.mean(axis=0)
+
+    return pdfgrid.T
+
+
+def _get_compressed_pdfgrid(
+    pdf_grid: np.array, Neig: int, hessian_normalization: bool = False
+) -> np.array:
+    """
+    Returns the PCA basis.
+
+    Parameters
+    ----------
+    pdf_grid: np.array
+        The pdf grid in the evolution basis.
+    Neig: int
+        The number of PCA basis vectors to write.
+    hessian_normalization: bool, default is False
+        Whether to normalize the eigenvectors by the square root of the number of
+        replicas minus 1.
+
+
+    Returns
+    -------
+    np.array
+        The PCA compressed pdf grid.
+    """
+    X = _get_X_exportgrids(
+        pdf_grid.copy()
+    )  # copy to avoid modifying the original pdf_grid
+    V = _compress_X(X, Neig)
+
+    if hessian_normalization:
+        norm = np.sqrt(pdf_grid.shape[0] - 1)
+        V /= norm
+
+    # Compute the PCA basis (Z = X @ V), shape is (Nfl * Ngrid, Neig)
+    pca_basis = (
+        X @ V
+        + pdf_grid.mean(axis=0).reshape(pdf_grid.shape[1] * pdf_grid.shape[2])[:, None]
+    )
+    return pca_basis
+
+
+def write_pca_basis_exportgrids(
+    fit_path: pathlib.Path,
+    Neig: int,
+    output_path: pathlib.Path,
+    hessian_normalization: bool = False,
+):
+    """
+    Writes the PCA basis to the output path.
+
+    Parameters
+    ----------
+    fit_path: pathlib.Path
+        The path to the fit containing the replicas.
+    Neig: int
+        The number of PCA basis vectors to write.
+    output_path: pathlib.Path
+        The path to the output directory.
+    hessian_normalization: bool, default is False
+        Whether to normalize the eigenvectors by the square root of the number of
+        replicas minus 1.
+    """
+    pdf_grid = get_pdfgrid_from_exportgrids(fit_path)
+    pca_basis = _get_compressed_pdfgrid(pdf_grid, Neig, hessian_normalization)
+
+    # Copy input runcard to the output path (needed eg for evolution)
+    if not os.path.exists(output_path / "input"):
+        os.makedirs(output_path / "input", exist_ok=True)
+    shutil.copy(fit_path / "input/runcard.yaml", output_path / "input/runcard.yaml")
+
+    # Write the PCA basis to the output path
+    if not os.path.exists(output_path / "replicas"):
+        os.mkdir(output_path / "replicas")
+
+    for i, pca_vec in enumerate(pca_basis.T):
+        exportgrid_path = output_path / f"replicas/replica_{i+1}"
+        if not os.path.exists(exportgrid_path):
+            os.mkdir(exportgrid_path)
+
+        write_exportgrid(
+            grid_for_writing=pca_vec.reshape(pdf_grid.shape[1], pdf_grid.shape[2]),
+            grid_name=exportgrid_path / output_path.name,
+            replica_index=i + 1,
+            Q=1.65,
+            xgrid=LHAPDF_XGRID,
+            export_labels=EXPORT_LABELS,
+        )
+
+
+def pca_basis_from_exportgrids(
+    colibri_fit: str,
+    Neig: int,
+    output_path: pathlib.Path,
+    hessian_normalization: bool = False,
+):
+    """
+    Writes the PCA basis to the output path.
+    """
+    fit_path = get_fit_path(colibri_fit)
+    write_pca_basis_exportgrids(fit_path, Neig, output_path, hessian_normalization)
