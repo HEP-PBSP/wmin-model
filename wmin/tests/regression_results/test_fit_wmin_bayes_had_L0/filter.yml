@@ -10,7 +10,7 @@ dataset_inputs:
   - {dataset: CMS_1JET_8TEV_PTY, variant: legacy}
   - {dataset: CMS_TTBAR_7TEV_TOT_X-SEC, variant: legacy}
 
-theoryid: 708                          # The theory from which the predictions are drawn.
+theoryid: 40000000                          # The theory from which the predictions are drawn.
 use_cuts: internal                     # The kinematic cuts to be applied to the data.
 
 closure_test_level: 0                  # The closure test level: False for experimental, level 0
