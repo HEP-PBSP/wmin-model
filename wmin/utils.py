@@ -3,16 +3,15 @@ wmin.utils is a module that contains several utils for PDF fits in
 the wmin parameterization.
 """
 
-import time
-import resource
 import logging
+import resource
+import time
 
 import jax
 import pandas as pd
+from colibri.likelihood import LogLikelihood
 from colibri.loss_functions import chi2
-from colibri.ultranest_fit import UltraNestLogLikelihood
 from reportengine.table import table
-
 
 log = logging.getLogger(__name__)
 
@@ -89,7 +88,7 @@ def likelihood_time(
     central_values = central_inv_covmat_index.central_values
     ndata = len(central_values)
 
-    log_likelihood = UltraNestLogLikelihood(
+    log_likelihood = LogLikelihood(
         central_inv_covmat_index,
         pdf_model,
         FIT_XGRID,
