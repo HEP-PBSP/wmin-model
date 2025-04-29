@@ -3,25 +3,78 @@ wmin.utils is a module that contains several utils for PDF fits in
 the wmin parameterization.
 """
 
-import time
-import resource
 import logging
+import resource
+import time
 
 import jax
-import pandas as pd
 import numpy as np
+import pandas as pd
 from colibri.loss_functions import chi2
 from colibri.ultranest_fit import UltraNestLogLikelihood
 from reportengine.table import table
 
-
 log = logging.getLogger(__name__)
 
 
+FLAV_INFO_NNPDF40 = [
+    {
+        "fl": "sng",
+        "trainable": False,
+        "smallx": [1.089, 1.119],
+        "largex": [1.475, 3.119],
+    },
+    {
+        "fl": "g",
+        "trainable": False,
+        "smallx": [0.7504, 1.098],
+        "largex": [2.814, 5.669],
+    },
+    {
+        "fl": "v",
+        "trainable": False,
+        "smallx": [0.479, 0.7384],
+        "largex": [1.549, 3.532],
+    },
+    {
+        "fl": "v3",
+        "trainable": False,
+        "smallx": [0.1073, 0.4397],
+        "largex": [1.733, 3.458],
+    },
+    {
+        "fl": "v8",
+        "trainable": False,
+        "smallx": [0.5507, 0.7837],
+        "largex": [1.516, 3.356],
+    },
+    {
+        "fl": "t3",
+        "trainable": False,
+        "smallx": [-0.4506, 0.9305],
+        "largex": [1.745, 3.424],
+    },
+    {
+        "fl": "t8",
+        "trainable": False,
+        "smallx": [0.5877, 0.8687],
+        "largex": [1.522, 3.515],
+    },
+    {
+        "fl": "t15",
+        "trainable": False,
+        "smallx": [1.089, 1.141],
+        "largex": [1.492, 3.222],
+    },
+]
+"""
+Default preprocessing exponents ranges for the NNPDF40 parametrisation.
+"""
+
+RSS_MB = lambda: resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024**2
 """
 Memory usage before loading of resources
 """
-RSS_MB = lambda: resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024**2
 init = RSS_MB()
 
 
