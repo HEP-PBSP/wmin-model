@@ -14,9 +14,7 @@ import tensorflow as tf
 from colibri.constants import EXPORT_LABELS, LHAPDF_XGRID
 from colibri.export_results import write_exportgrid
 from n3fit.model_gen import pdfNN_layer_generator
-from reportengine import collect
-from validphys.sumrules import KNOWN_SUM_RULES_EXPECTED, sum_rules
-
+from validphys.sumrules import sum_rules
 from wmin.utils import FLAV_INFO_NNPDF40, arclength_outliers, arclength_pdfgrid
 
 log = logging.getLogger(__name__)
