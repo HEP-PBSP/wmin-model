@@ -1,0 +1,30 @@
+meta:
+  title: POD basis
+  author: Lazy Person
+  keywords: ["POD basis", "wmin"]
+
+# NNPDF Neural Net Architecture settings
+replica_range_settings:
+  min_replica: 1
+  max_replica: 1000
+
+impose_sumrule: true
+
+fitbasis: EVOL
+
+nodes: [25, 20, 8]
+
+activations: ["tanh", "tanh", "linear"]
+
+initializer_name: "glorot_normal"
+layer_type: "dense"
+
+
+# Number of components to keep
+Neig: 10
+
+# theoryid used after SVD to evolve fit
+theoryid: 40_000_000
+
+actions_:
+  - write_pod_basis
