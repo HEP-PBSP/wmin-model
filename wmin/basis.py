@@ -14,32 +14,9 @@ import tensorflow as tf
 from colibri.constants import EXPORT_LABELS, LHAPDF_XGRID
 from colibri.export_results import write_exportgrid
 from n3fit.model_gen import pdfNN_layer_generator
-from validphys.sumrules import sum_rules
 from wmin.utils import FLAV_INFO_NNPDF40, arclength_outliers, arclength_pdfgrid
 
 log = logging.getLogger(__name__)
-
-
-def sum_rules_dict(pdf, Q=1.65):
-    """
-    Calculates the momentum, u-valence and d-valence sum rules
-    (as well as s - and c - valence)for a given PDF set.
-
-    Parameters
-    ----------
-    pdf: validphys.core.PDF
-        The PDF set to calculate the sum rules for.
-
-    Q: float
-        The scale at which to calculate the sum rules.
-
-    Returns
-    -------
-    dict
-        A nested dictionary with key name of the PDF set and value a dictionary
-        containing the sum rules values for the replicas of the PDF set.
-    """
-    return {str(pdf): sum_rules(pdf, Q)}
 
 
 def n3fit_pdf_model(
@@ -168,7 +145,7 @@ def pod_basis(n3fit_pdf_grid: np.ndarray, Neig: int) -> np.ndarray:
     X, phi0 = get_X_matrix(n3fit_pdf_grid)
 
     # NOTE: only need left-singular matrix for POD
-    U, _, _ = np.linalg.svd(X, full_matrices=False)
+    U, _S, _Vt = np.linalg.svd(X, full_matrices=False)
 
     # Select the first Neig singular vectors
     U = U[:, :Neig]
