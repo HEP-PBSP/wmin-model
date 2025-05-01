@@ -1,9 +1,7 @@
 """
 wmin.basis.py
 
-This module contains the functions that allow to construct a basis for the wmin parametrisation.
-The main target used for the construction of the basis at this stage is the simultaneous 
-satisfaction of the momentum, u-valence and d-valence sum rules.
+This module contains the functions that allow to construct a basis for the POD parametrisation.
 """
 
 import logging
