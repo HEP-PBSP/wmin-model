@@ -12,6 +12,7 @@ import tensorflow as tf
 from colibri.constants import EXPORT_LABELS, LHAPDF_XGRID
 from colibri.export_results import write_exportgrid
 from n3fit.model_gen import pdfNN_layer_generator
+
 from wmin.utils import FLAV_INFO_NNPDF40, arclength_outliers, arclength_pdfgrid
 
 log = logging.getLogger(__name__)
@@ -143,15 +144,17 @@ def pod_basis(n3fit_pdf_grid: np.ndarray, Neig: int) -> np.ndarray:
     X, phi0 = get_X_matrix(n3fit_pdf_grid)
 
     # NOTE: only need left-singular matrix for POD
-    U, _S, _Vt = np.linalg.svd(X, full_matrices=False)
+    U, S, _Vt = np.linalg.svd(X, full_matrices=False)
 
     # Select the first Neig singular vectors
-    U = U[:, :Neig]
+    # NOTE: rescaling POD columns with singular values helps keeping the
+    # wmin coefficents small during the fit.
+    pod = (U @ np.diag(S))[:, :Neig]
 
     # Reshape U to (Neig, Nflavours, Nx)
-    U = (U.T).reshape(Neig, n3fit_pdf_grid.shape[1], n3fit_pdf_grid.shape[2])
+    pod = (pod.T).reshape(Neig, n3fit_pdf_grid.shape[1], n3fit_pdf_grid.shape[2])
     phi0 = phi0.reshape(n3fit_pdf_grid.shape[1], n3fit_pdf_grid.shape[2])
-    return U, phi0
+    return pod, phi0
 
 
 def write_pod_basis(
