@@ -179,8 +179,8 @@ def write_pod_basis(
     export_labels: dict, default is EXPORT_LABELS
 
     """
-    U_matrix, phi0 = pod_basis
-    basis = U_matrix + phi0
+    pod, phi0 = pod_basis
+    basis = pod + phi0
 
     replicas_path = str(output_path) + "/replicas"
     if not os.path.exists(replicas_path):
