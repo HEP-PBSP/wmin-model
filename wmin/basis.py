@@ -50,6 +50,115 @@ def n3fit_pdf_model(
     return pdf_model
 
 
+def n3fit_pdf_models_filtered_seeds(
+    flav_info: list = FLAV_INFO_NNPDF40,
+    impose_sumrule: bool = True,
+    fitbasis: str = "EVOL",
+    nodes: list = [25, 20, 8],
+    activations: list = ["tanh", "tanh", "linear"],
+    initializer_name: str = "glorot_normal",
+    layer_type: str = "dense",
+    num_replicas: int = 100,
+    xgrid: list = LHAPDF_XGRID,
+):
+    """
+    Wrapper function to generate a PDF model using the n3fit model generator.
+    """
+    
+    pdf_model = pdfNN_layer_generator(
+        nodes=nodes,
+        activations=activations,
+        initializer_name=initializer_name,
+        layer_type=layer_type,
+        seed=range(num_replicas),
+        impose_sumrule=impose_sumrule,
+        flav_info=flav_info,
+        fitbasis=fitbasis,
+        num_replicas=num_replicas,
+    )
+
+    # Filter out the arclength outliers
+    xgrid = tf.convert_to_tensor(np.array(xgrid)[None, :, None])
+    input = {"pdf_input": xgrid, "xgrid_integration": pdf_model.x_in}
+
+    pdf_grid = tf.squeeze(pdf_model(input), axis=0)
+    pdf_array = np.array(tf.transpose(pdf_grid, perm=[0, 2, 1]))
+
+    arc_outliers = True
+    filtered_seeds = np.arange(num_replicas)
+    while arc_outliers:
+        replicas_arclengths = arclength_pdfgrid(xgrid.numpy().squeeze(), pdf_array)
+        # find outliers based on arclength interquartile range
+        outliers = arclength_outliers(replicas_arclengths)
+
+        log.info(f"Found {len(outliers)} arclength outliers in the PDF grid")
+
+        # delete outliers from the grid
+        pdf_array = np.delete(pdf_array, outliers, axis=0)
+
+        # Only keep seeds that are not outliers
+        filtered_seeds = np.delete(
+            filtered_seeds, outliers,
+        )
+        if len(outliers) == 0:
+            arc_outliers = False
+        # NOTE: it could be a good idea to repeat the filtering procedure more than once
+
+    return filtered_seeds
+
+
+def write_n3fit_pdf_grid_filtered(
+    n3fit_pdf_models_filtered_seeds,
+    theoryid,
+    output_path,
+    flav_info: list = FLAV_INFO_NNPDF40,
+    impose_sumrule: bool = True,
+    fitbasis: str = "EVOL",
+    nodes: list = [25, 20, 8],
+    activations: list = ["tanh", "tanh", "linear"],
+    initializer_name: str = "glorot_normal",
+    layer_type: str = "dense",
+    ):
+    """
+    TODO
+    """
+    for i,seed in enumerate(n3fit_pdf_models_filtered_seeds):
+        pdf_model = pdfNN_layer_generator(
+        nodes=nodes,
+        activations=activations,
+        initializer_name=initializer_name,
+        layer_type=layer_type,
+        seed=[seed],
+        impose_sumrule=impose_sumrule,
+        flav_info=flav_info,
+        fitbasis=fitbasis,
+        num_replicas=1,
+        )
+
+        from n3fit.io.writer import storefit
+        from n3fit.vpinterface import N3PDF
+        pdf_obj = N3PDF(pdf_model)
+
+        # create replicas folder
+        replicas_path = output_path/"replicas"
+
+        if not os.path.exists(replicas_path):
+            os.mkdir(replicas_path)
+        
+        # get name of the PDF set
+        name_folder = output_path.name
+        
+        # create replica_i folder 
+        replica_path = replicas_path/f"replica_{i+1}"
+
+        if not os.path.exists(replica_path):
+            os.mkdir(replica_path)
+        
+        storefit(pdf_obj, i, replica_path/f"{name_folder}.exportgrid", theoryid)
+
+
+
+
 def n3fit_pdf_grid(
     n3fit_pdf_model, xgrid=LHAPDF_XGRID, filter_arclength_outliers: bool = True
 ):
