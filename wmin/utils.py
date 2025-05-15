@@ -11,6 +11,7 @@ import jax
 import numpy as np
 import pandas as pd
 from colibri.loss_functions import chi2
+
 from colibri.ultranest_fit import UltraNestLogLikelihood
 from reportengine.table import table
 
@@ -33,7 +34,7 @@ FLAV_INFO_NNPDF40 = [
     {
         "fl": "v",
         "trainable": False,
-        "smallx": [0.479, 0.7384],
+        "smallx": [0.1073, 0.4397],  # [0.479, 0.7384],
         "largex": [1.549, 3.532],
     },
     {
@@ -45,7 +46,7 @@ FLAV_INFO_NNPDF40 = [
     {
         "fl": "v8",
         "trainable": False,
-        "smallx": [0.5507, 0.7837],
+        "smallx": [0.1073, 0.4397],  # [0.5507, 0.7837],
         "largex": [1.516, 3.356],
     },
     {

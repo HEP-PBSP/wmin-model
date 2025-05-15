@@ -79,7 +79,7 @@ def n3fit_pdf_grid(
 
     pdf_array = np.array(tf.transpose(pdf_grid, perm=[0, 2, 1]))
 
-    if filter_arclength_outliers:
+    while filter_arclength_outliers:
         replicas_arclengths = arclength_pdfgrid(xgrid.numpy().squeeze(), pdf_array)
         # find outliers based on arclength interquartile range
         outliers = arclength_outliers(replicas_arclengths)
@@ -88,6 +88,11 @@ def n3fit_pdf_grid(
 
         # delete outliers from the grid
         pdf_array = np.delete(pdf_array, outliers, axis=0)
+
+        # interrupt if no outliers are found
+        if len(outliers) == 0:
+            log.info("No more outliers found in the PDF grid")
+            filter_arclength_outliers = False
 
     return pdf_array
 
@@ -149,7 +154,8 @@ def pod_basis(n3fit_pdf_grid: np.ndarray, Neig: int) -> np.ndarray:
     # Select the first Neig singular vectors
     # NOTE: rescaling POD columns with singular values helps keeping the
     # wmin coefficents small during the fit.
-    pod = (U @ np.diag(S))[:, :Neig]
+    norm = np.sqrt(X.shape[1] - 1)
+    pod = (U @ np.diag(S))[:, :Neig] / norm
 
     # Reshape U to (Neig, Nflavours, Nx)
     pod = (pod.T).reshape(Neig, n3fit_pdf_grid.shape[1], n3fit_pdf_grid.shape[2])
@@ -198,34 +204,28 @@ def write_pod_basis(
         grid_name = rep_path + "/" + fit_name
 
         if i == 0:
-            # write the central member of the basis
-            rep_path_0 = replicas_path + f"/replica_0"
-
-            if not os.path.exists(rep_path_0):
-                os.mkdir(rep_path_0)
-
-            grid_name_0 = rep_path_0 + "/" + fit_name
+            # write the central member (phi0) of the basis to replica_1
 
             write_exportgrid(
                 grid_for_writing=phi0,
-                grid_name=grid_name_0,
-                replica_index=i,
+                grid_name=grid_name,
+                replica_index=i + 1,
+                Q=Q,
+                xgrid=xgrid,
+                export_labels=export_labels,
+            )
+        else:
+            write_exportgrid(
+                grid_for_writing=basis[i - 1],
+                grid_name=grid_name,
+                replica_index=i + 1,
                 Q=Q,
                 xgrid=xgrid,
                 export_labels=export_labels,
             )
 
-        write_exportgrid(
-            grid_for_writing=basis[i],
-            grid_name=grid_name,
-            replica_index=i + 1,
-            Q=Q,
-            xgrid=xgrid,
-            export_labels=export_labels,
-        )
-
     # TODO: how can we ensure that in the postfit of the evolution we don't by mistake also create another central member?
     log.info(
-        f"Replicas written to {replicas_path}, with the central member at replica_0."
+        f"Replicas written to {replicas_path}, with the central member at replica_1."
     )
     log.info("Now you can evolve them with evolve_fit.")
