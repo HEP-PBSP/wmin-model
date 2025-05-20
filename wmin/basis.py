@@ -154,8 +154,7 @@ def pod_basis(n3fit_pdf_grid: np.ndarray, Neig: int) -> np.ndarray:
     # Select the first Neig singular vectors
     # NOTE: rescaling POD columns with singular values helps keeping the
     # wmin coefficents small during the fit.
-    norm = np.sqrt(X.shape[1] - 1)
-    pod = (U @ np.diag(S))[:, :Neig] / norm
+    pod = (U @ np.diag(S))[:, :Neig]
 
     # Reshape U to (Neig, Nflavours, Nx)
     pod = (pod.T).reshape(Neig, n3fit_pdf_grid.shape[1], n3fit_pdf_grid.shape[2])
