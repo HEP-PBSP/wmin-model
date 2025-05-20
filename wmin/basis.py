@@ -13,13 +13,13 @@ from colibri.constants import EXPORT_LABELS, LHAPDF_XGRID
 from colibri.export_results import write_exportgrid
 from n3fit.model_gen import pdfNN_layer_generator
 
-from wmin.utils import FLAV_INFO_NNPDF40, arclength_outliers, arclength_pdfgrid
+from wmin.utils import FLAV_INFO, arclength_outliers, arclength_pdfgrid
 
 log = logging.getLogger(__name__)
 
 
 def n3fit_pdf_model(
-    flav_info: list = FLAV_INFO_NNPDF40,
+    flav_info: list = FLAV_INFO,
     replica_range_settings: dict = {"min_replica": 1, "max_replica": 1000},
     impose_sumrule: bool = True,
     fitbasis: str = "EVOL",
