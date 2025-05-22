@@ -34,7 +34,7 @@ FLAV_INFO = [
     {
         "fl": "v",
         "trainable": False,
-        "smallx": [0.1, 0.51],  # [0.479, 0.7384],
+        "smallx": [0.1073, 0.4397],  # [0.479, 0.7384],
         "largex": [1.549, 3.532],
     },
     {
@@ -46,25 +46,25 @@ FLAV_INFO = [
     {
         "fl": "v8",
         "trainable": False,
-        "smallx": [0.1, 0.51],  # [0.5507, 0.7837],
+        "smallx": [0.1073, 0.4397],  # [0.5507, 0.7837],
         "largex": [1.516, 3.356],
     },
     {
         "fl": "t3",
         "trainable": False,
-        "smallx": [-0.4506, 0.75],
+        "smallx": [-0.4506, 0.5],
         "largex": [1.745, 3.424],
     },
     {
         "fl": "t8",
         "trainable": False,
-        "smallx": [0.3, 0.7687],
+        "smallx": [0.5877, 0.8687],
         "largex": [1.522, 3.515],
     },
     {
         "fl": "t15",
         "trainable": False,
-        "smallx": [0.8, 1.1],
+        "smallx": [1.089, 1.141],
         "largex": [1.492, 3.222],
     },
 ]
