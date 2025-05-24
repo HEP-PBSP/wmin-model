@@ -14,14 +14,14 @@ from colibri.export_results import write_exportgrid
 from n3fit.model_gen import pdfNN_layer_generator
 
 from wmin.utils import FLAV_INFO, arclength_outliers, arclength_pdfgrid
+from wmin.sr_normaliser import sum_rules_normalise_pdf_array
 
 log = logging.getLogger(__name__)
 
 
 def n3fit_pdf_model(
     flav_info: list = FLAV_INFO,
-    replica_range_settings: dict = {"min_replica": 1, "max_replica": 1000},
-    impose_sumrule: bool = True,
+    replica_range_settings: dict = {"min_replica": 1, "max_replica": 5},
     fitbasis: str = "EVOL",
     nodes: list = [25, 20, 8],
     activations: list = ["tanh", "tanh", "linear"],
@@ -30,6 +30,10 @@ def n3fit_pdf_model(
 ):
     """
     Wrapper function to generate a PDF model using the n3fit model generator.
+
+    NOTE: in this function the n3fit model is always generated with the sum rules already imposed.
+    However, for better stability, the sum rules are also imposed later-on in a more accurate way
+    using a quadrature integration.
     """
     pdf_model = pdfNN_layer_generator(
         nodes=nodes,
@@ -40,7 +44,7 @@ def n3fit_pdf_model(
             replica_range_settings["min_replica"],
             replica_range_settings["max_replica"] + 1,
         ),
-        impose_sumrule=impose_sumrule,
+        impose_sumrule=True, # sum-rules are also imposed later-on in a more accurate way.
         flav_info=flav_info,
         fitbasis=fitbasis,
         num_replicas=replica_range_settings["max_replica"]
@@ -51,7 +55,7 @@ def n3fit_pdf_model(
 
 
 def n3fit_pdf_grid(
-    n3fit_pdf_model, xgrid=LHAPDF_XGRID, filter_arclength_outliers: bool = True
+    n3fit_pdf_model, sr_normalisation_factors, xgrid=LHAPDF_XGRID, filter_arclength_outliers: bool = True
 ):
     """
     Returns the PDF grid for the n3fit model.
@@ -77,8 +81,13 @@ def n3fit_pdf_grid(
 
     pdf_grid = tf.squeeze(n3fit_pdf_model(input), axis=0)
 
+    # shapes here are (nreplicas, nflavours, nx)
     pdf_array = np.array(tf.transpose(pdf_grid, perm=[0, 2, 1]))
 
+    # impose sum rules
+    pdf_array = sum_rules_normalise_pdf_array(pdf_array, sr_normalisation_factors)
+
+    # filter from arclength outliers
     while filter_arclength_outliers:
         replicas_arclengths = arclength_pdfgrid(xgrid.numpy().squeeze(), pdf_array)
         # find outliers based on arclength interquartile range
@@ -228,3 +237,73 @@ def write_pod_basis(
         f"Replicas written to {replicas_path}, with the central member at replica_1."
     )
     log.info("Now you can evolve them with evolve_fit.")
+
+
+def write_wmin_basis(
+    wmin_basis_pdf_grid,
+    output_path,
+    Q=1.65,
+    xgrid=LHAPDF_XGRID,
+    export_labels=EXPORT_LABELS,
+    replica_range_settings=None,
+):
+    """
+    Writes the wmin basis at the parametrisation scale Q to the output_path.
+    """
+
+    replicas_path = str(output_path) + "/replicas"
+    if not os.path.exists(replicas_path):
+        os.mkdir(replicas_path)
+
+    if replica_range_settings is not None:
+        replica_range = range(
+            replica_range_settings["min_replica"], replica_range_settings["max_replica"]
+        )
+        grid_index_range = range(1, wmin_basis_pdf_grid.shape[0])
+    else:
+        replica_range = range(1, wmin_basis_pdf_grid.shape[0])
+        grid_index_range = range(1, wmin_basis_pdf_grid.shape[0])
+
+    for replica_index, grid_index in zip(replica_range, grid_index_range):
+
+        rep_path = replicas_path + f"/replica_{replica_index}"
+        if not os.path.exists(rep_path):
+            os.mkdir(rep_path)
+        fit_name = str(output_path).split("/")[-1]
+
+        grid_name = rep_path + "/" + fit_name
+
+        write_exportgrid(
+            grid_for_writing=wmin_basis_pdf_grid[grid_index],
+            grid_name=grid_name,
+            replica_index=replica_index,
+            Q=Q,
+            xgrid=xgrid,
+            export_labels=export_labels,
+        )
+
+    log.info(f"Replicas written to {replicas_path}")
+    log.info(
+        "Now you can evolve them with evolve_fit and then compress them with mc2_hessian"
+    )
+
+
+def write_n3fit_basis(
+    n3fit_pdf_grid,
+    output_path,
+    Q=1.65,
+    xgrid=LHAPDF_XGRID,
+    export_labels=EXPORT_LABELS,
+    replica_range_settings=None,
+):
+    """
+    Wrapper of write wmin basis for n3fit basis.
+    """
+    write_wmin_basis(
+        n3fit_pdf_grid,
+        output_path,
+        Q=Q,
+        xgrid=xgrid,
+        export_labels=export_labels,
+        replica_range_settings=replica_range_settings,
+    )
