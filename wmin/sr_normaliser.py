@@ -96,7 +96,7 @@ def pdf_integrand(n3fit_pdf_model):
     return _integrand
 
 
-def _integral_torchquad(func, rep_idx, sr_type, lim, n_samples=500000):
+def _integral_torchquad(func, rep_idx, sr_type, lim, n_samples=20000):
     """
     TODO
     """
@@ -220,3 +220,32 @@ def sum_rules_normalise_pdf_array(pdf_array, sr_normalisation_factors):
     ]
 
     return pdf_array
+
+
+def valence_sum_rules_outliers(pdf_array, xgrid):
+    """
+    TODO
+    """
+    # calculate the valence sum rules for each replica
+    vsr = []
+    vsr3 = []
+    vsr8 = []
+    for rep_idx in range(pdf_array.shape[0]):
+        vsr.append(np.trapz(pdf_array[rep_idx, FLAVOUR_TO_ID_MAPPING["V"], :] / np.array(xgrid), xgrid))
+        vsr3.append(np.trapz(pdf_array[rep_idx, FLAVOUR_TO_ID_MAPPING["V3"], :] / np.array(xgrid), xgrid))
+        vsr8.append(np.trapz(pdf_array[rep_idx, FLAVOUR_TO_ID_MAPPING["V8"], :] / np.array(xgrid), xgrid))
+
+    diffs_V = np.abs(3 - np.array(vsr))
+    V_outlier_idxs = np.where(diffs_V > 1e-2)[0]
+
+    diffs_V3 = np.abs(1 - np.array(vsr3))
+    V3_outlier_idxs = np.where(diffs_V3 > 1e-2)[0]
+
+    diffs_V8 = np.abs(3 - np.array(vsr8))
+    V8_outlier_idxs = np.where(diffs_V8 > 1e-2)[0]
+
+    # combine the outlier indices
+    sr_outlier_idxs = np.unique(np.concatenate((V_outlier_idxs, V3_outlier_idxs, V8_outlier_idxs)))
+    log.info(f"Found {len(sr_outlier_idxs)} outliers in the PDF grid based on V, V3 and V8 sum rules")
+    return sr_outlier_idxs
+    
