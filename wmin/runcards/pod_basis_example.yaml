@@ -9,6 +9,7 @@ replica_range_settings:
   max_replica: 1000
 
 impose_sumrule: true
+filter_sr_outliers: false
 
 fitbasis: EVOL
 

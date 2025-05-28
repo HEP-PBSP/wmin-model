@@ -76,6 +76,7 @@ def n3fit_pdf_grid(
     np.array
         The PDF grid for the n3fit model.
     """
+    # TODO: write this using jax
     xgrid_in = tf.convert_to_tensor(np.array(xgrid)[None, :, None])
     input = {"pdf_input": xgrid_in, "xgrid_integration": n3fit_pdf_model.x_in}
 
