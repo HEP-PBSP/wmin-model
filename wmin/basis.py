@@ -14,7 +14,6 @@ from colibri.export_results import write_exportgrid
 from n3fit.model_gen import pdfNN_layer_generator
 
 from wmin.utils import FLAV_INFO, arclength_outliers, arclength_pdfgrid
-from wmin.sr_normaliser import valence_sum_rules_outliers
 
 log = logging.getLogger(__name__)
 
@@ -44,7 +43,7 @@ def n3fit_pdf_model(
             replica_range_settings["min_replica"],
             replica_range_settings["max_replica"] + 1,
         ),
-        impose_sumrule=True, # sum-rules are also imposed later-on in a more accurate way.
+        impose_sumrule=True,  # sum-rules are also imposed later-on in a more accurate way.
         flav_info=flav_info,
         fitbasis=fitbasis,
         num_replicas=replica_range_settings["max_replica"]
@@ -55,7 +54,9 @@ def n3fit_pdf_model(
 
 
 def n3fit_pdf_grid(
-    n3fit_pdf_model, xgrid=LHAPDF_XGRID, filter_sr_outliers: bool = True, filter_arclength_outliers: bool = True, 
+    n3fit_pdf_model,
+    xgrid=LHAPDF_XGRID,
+    filter_arclength_outliers: bool = True,
 ):
     """
     Returns the PDF grid for the n3fit model.
@@ -84,17 +85,6 @@ def n3fit_pdf_grid(
 
     # shapes here are (nreplicas, nflavours, nx)
     pdf_array = np.array(tf.transpose(pdf_grid, perm=[0, 2, 1]))
-
-    # impose sum rules
-    # pdf_array = sum_rules_normalise_pdf_array(pdf_array, sr_normalisation_factors)
-
-    # filter from sum rules outliers
-    if filter_sr_outliers:
-        sr_outlier_idxs = valence_sum_rules_outliers(pdf_array, xgrid)
-        pdf_array = np.delete(pdf_array, sr_outlier_idxs, axis=0)
-        log.info(
-            f"Found {len(sr_outlier_idxs)} outliers in the PDF grid based on Valence sum rules"
-        )
 
     # filter from arclength outliers
     while filter_arclength_outliers:
