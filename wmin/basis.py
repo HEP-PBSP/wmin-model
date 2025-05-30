@@ -242,7 +242,19 @@ def write_pod_basis(
     log.info(
         f"Replicas written to {replicas_path}, with the central member at replica_1."
     )
-    log.info("Now you can evolve them with evolve_fit.")
+
+    log.warning(
+        "Note: this is a POD basis, so the central member is not the mean but always replica_1.\n"
+        "After evolution, please run:\n"
+        "  python shift_lhadf_members.py name_fit/postfit/name_fit\n"
+        "This will:\n"
+        "  1. Remove the post-fit generated central member\n"
+        "  2. Shift all others down by one index\n"
+        "  3. Make replica_1 the new central member of the post-fit basis"
+    )
+    log.warning(
+        "Reminder: decrement `NumMembers` by 1 in the LHAPDF .info file to reflect the removed member."
+    )
 
 
 def write_wmin_basis(
