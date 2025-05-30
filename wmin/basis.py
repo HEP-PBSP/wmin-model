@@ -55,11 +55,10 @@ def n3fit_pdf_model(
 
 def n3fit_pdf_grid(
     n3fit_pdf_model,
-    xgrid=LHAPDF_XGRID,
     filter_arclength_outliers: bool = True,
 ):
     """
-    Returns the PDF grid for the n3fit model.
+    Returns the PDF grid for the n3fit model evaluated on the LHAPDF_XGRID.
     Also filters out the arclength outliers which can occurr when normalising the random
     PDF replicas for the sum rules.
 
@@ -78,7 +77,7 @@ def n3fit_pdf_grid(
         The PDF grid for the n3fit model.
     """
     # TODO: write this using jax
-    xgrid_in = tf.convert_to_tensor(np.array(xgrid)[None, :, None])
+    xgrid_in = tf.convert_to_tensor(np.array(LHAPDF_XGRID)[None, :, None])
     input = {"pdf_input": xgrid_in, "xgrid_integration": n3fit_pdf_model.x_in}
 
     pdf_grid = tf.squeeze(n3fit_pdf_model(input), axis=0)
