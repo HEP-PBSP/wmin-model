@@ -13,6 +13,7 @@ import pandas as pd
 from colibri.loss_functions import chi2
 
 from colibri.ultranest_fit import UltraNestLogLikelihood
+from colibri.constants import FLAVOUR_TO_ID_MAPPING, LHAPDF_XGRID
 from reportengine.table import table
 
 log = logging.getLogger(__name__)
@@ -235,3 +236,71 @@ def arclength_outliers(arclength_pdfgrid: np.array) -> np.array:
         (arclength_pdfgrid < lower_bound) | (arclength_pdfgrid > upper_bound)
     )[0]
     return outliers
+
+
+def sign_flips_counter(f: np.ndarray) -> int:
+    """
+    Counts the number of sign flips in the function values `f`.
+    Sign flips are counted by checking the sign of the numerical derivative.
+
+    Parameters
+    ----------
+    f: array-like, should represent x * pdf
+        The function values for which to count sign flips.
+    """
+
+    # Ensure xgrid is LHAPDF_XGRID so as to ignore x-points larger than 0.8
+    if f.shape[-1] != len(LHAPDF_XGRID):
+        raise ValueError("The function values should be defined on the LHAPDF_XGRID.")
+
+    # count oscillations by taking numerical derivative, discard points larger than 0.8
+    signs_v = np.sign(np.diff(f[:-25]))
+
+    tmp_sign = signs_v[0]
+    n_sign_flips = 0
+
+    for sign in signs_v:
+        if sign == -tmp_sign:
+            n_sign_flips += 1
+            tmp_sign = sign
+
+    return n_sign_flips
+
+
+def sign_flip_selection(pdf_array: np.ndarray) -> np.ndarray:
+    """
+    Given a PDF array, filters out the replicas for which the V, V3, and V8 flavours
+    don't have exactly one sign flip.
+
+    NOTE: valence flavours that oscillate more than once can lead to non-integrable
+    basis functions when evolving the PDFs.
+
+    Parameters
+    ----------
+    pdf_array: np.ndarray
+        The PDF array of shape (N_rep, N_fl, N_x).
+
+    Returns
+    -------
+    np.ndarray
+        The filtered PDF array containing only replicas with exactly one sign flip
+        for V, V3, and V8 flavours.
+    """
+
+    one_flips = []
+    for rep in range(pdf_array.shape[0]):
+        f_v = pdf_array[rep, FLAVOUR_TO_ID_MAPPING["V"]]
+        f_v8 = pdf_array[rep, FLAVOUR_TO_ID_MAPPING["V8"]]
+        f_v3 = pdf_array[rep, FLAVOUR_TO_ID_MAPPING["V3"]]
+
+        n_flips_v = sign_flips_counter(f_v)
+        n_flips_v8 = sign_flips_counter(f_v8)
+        n_flips_v3 = sign_flips_counter(f_v3)
+
+        # keep the replica only if all V, V3 and V8 have n_flips == 1
+        if n_flips_v == 1 and n_flips_v8 == 1 and n_flips_v3 == 1:
+            one_flips.append(rep)
+    log.info(
+        f"Found {len(one_flips)} replicas with exactly one sign flip for V, V3, and V8 flavours."
+    )
+    return pdf_array[one_flips, :, :]
