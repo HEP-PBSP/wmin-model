@@ -246,7 +246,7 @@ def write_pod_basis(
     log.warning(
         "Note: this is a POD basis, so the central member is not the mean but always replica_1.\n"
         "After evolution, please run:\n"
-        "  python shift_lhadf_members.py name_fit/postfit/name_fit\n"
+        f"  python shift_lhadf_members.py {fit_name}/postfit/{fit_name}\n"
         "This will:\n"
         "  1. Remove the post-fit generated central member\n"
         "  2. Shift all others down by one index\n"

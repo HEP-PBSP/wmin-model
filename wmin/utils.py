@@ -254,7 +254,7 @@ def sign_flips_counter(f: np.ndarray) -> int:
         raise ValueError("The function values should be defined on the LHAPDF_XGRID.")
 
     # count oscillations by taking numerical derivative, discard the last two points
-    signs_v = np.sign(np.diff(f[:-2]))
+    signs_v = np.sign(np.diff(f[:-25]))
 
     tmp_sign = signs_v[0]
     n_sign_flips = 0
@@ -293,17 +293,19 @@ def sign_flip_selection(pdf_array: np.ndarray) -> np.ndarray:
         f_v8 = pdf_array[rep, FLAVOUR_TO_ID_MAPPING["V8"]]
         f_v3 = pdf_array[rep, FLAVOUR_TO_ID_MAPPING["V3"]]
         f_t3 = pdf_array[rep, FLAVOUR_TO_ID_MAPPING["T3"]]
+        f_t8 = pdf_array[rep, FLAVOUR_TO_ID_MAPPING["T8"]]
 
         n_flips_v = sign_flips_counter(f_v)
         n_flips_v8 = sign_flips_counter(f_v8)
         n_flips_v3 = sign_flips_counter(f_v3)
         n_flips_t3 = sign_flips_counter(f_t3)
+        n_flips_t8 = sign_flips_counter(f_t8)
 
 
         # keep the replica only if all V, V3 and V8 have n_flips == 1
-        if n_flips_v <= 1 and n_flips_v8 <= 1 and n_flips_v3 <= 1 and n_flips_t3 <= 1:
+        if n_flips_v <= 1 and n_flips_v8 <= 1 and n_flips_v3 <= 1 and n_flips_t3 <= 1 and n_flips_t8 <= 1:
             one_flips.append(rep)
     log.info(
-        f"Found {len(one_flips)} replicas with exactly one sign flip for V, V3, and V8 flavours."
+        f"Found {len(one_flips)} replicas with exactly one sign flip for V, V3, V8, T3 and T8 flavours."
     )
     return pdf_array[one_flips, :, :]
