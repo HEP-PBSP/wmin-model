@@ -53,13 +53,13 @@ FLAV_INFO = [
     {
         "fl": "t3",
         "trainable": False,
-        "smallx": [-0.4506, 0.9305],
+        "smallx": [-0.4506, 0.75], #0.9305],
         "largex": [1.745, 3.424],
     },
     {
         "fl": "t8",
         "trainable": False,
-        "smallx": [0.5877, 0.8687],
+        "smallx": [0.5877, 0.75],#0.8687],
         "largex": [1.522, 3.515],
     },
     {
