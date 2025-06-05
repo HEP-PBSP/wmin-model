@@ -17,7 +17,9 @@ from torchquad import Boole, set_up_backend
 log = logging.getLogger(__name__)
 
 # TODO: test whether setting float64 has any effect on the accuracy of the results.
-set_up_backend("jax", data_type="float64")  # Set up the backend for torchquad to use JAX
+set_up_backend(
+    "jax", data_type="float64"
+)  # Set up the backend for torchquad to use JAX
 
 KNOWN_SUM_RULES_EV_BASIS = {
     "momentum": 1,
@@ -75,7 +77,6 @@ def pdf_integrand(n3fit_pdf_model):
         # # swap axes to (nreplicas, batch, nflavours) if that’s more convenient
         # pdf_array = jnp.transpose(pdf_grid, (0, 2, 1))
 
-
         x_in = tf.reshape(x, (1, max(x.shape), 1))
         input = {"pdf_input": x_in, "xgrid_integration": n3fit_pdf_model.x_in}
 
@@ -115,7 +116,7 @@ def _integral_torchquad(func, rep_idx, sr_type, lim, n_samples=20000):
     res = int_meth.integrate(
         integrand, dim=1, N=n_samples, integration_domain=domain, backend="jax"
     )
-    return res #float(res)
+    return res  # float(res)
 
 
 def _sum_rules(integrands, num_members, lims=LIMS):
@@ -231,9 +232,24 @@ def valence_sum_rules_outliers(pdf_array, xgrid):
     vsr3 = []
     vsr8 = []
     for rep_idx in range(pdf_array.shape[0]):
-        vsr.append(np.trapz(pdf_array[rep_idx, FLAVOUR_TO_ID_MAPPING["V"], :] / np.array(xgrid), xgrid))
-        vsr3.append(np.trapz(pdf_array[rep_idx, FLAVOUR_TO_ID_MAPPING["V3"], :] / np.array(xgrid), xgrid))
-        vsr8.append(np.trapz(pdf_array[rep_idx, FLAVOUR_TO_ID_MAPPING["V8"], :] / np.array(xgrid), xgrid))
+        vsr.append(
+            np.trapz(
+                pdf_array[rep_idx, FLAVOUR_TO_ID_MAPPING["V"], :] / np.array(xgrid),
+                xgrid,
+            )
+        )
+        vsr3.append(
+            np.trapz(
+                pdf_array[rep_idx, FLAVOUR_TO_ID_MAPPING["V3"], :] / np.array(xgrid),
+                xgrid,
+            )
+        )
+        vsr8.append(
+            np.trapz(
+                pdf_array[rep_idx, FLAVOUR_TO_ID_MAPPING["V8"], :] / np.array(xgrid),
+                xgrid,
+            )
+        )
 
     diffs_V = np.abs(3 - np.array(vsr))
     V_outlier_idxs = np.where(diffs_V > 1e-2)[0]
@@ -245,7 +261,10 @@ def valence_sum_rules_outliers(pdf_array, xgrid):
     V8_outlier_idxs = np.where(diffs_V8 > 1e-2)[0]
 
     # combine the outlier indices
-    sr_outlier_idxs = np.unique(np.concatenate((V_outlier_idxs, V3_outlier_idxs, V8_outlier_idxs)))
-    log.info(f"Found {len(sr_outlier_idxs)} outliers in the PDF grid based on V, V3 and V8 sum rules")
+    sr_outlier_idxs = np.unique(
+        np.concatenate((V_outlier_idxs, V3_outlier_idxs, V8_outlier_idxs))
+    )
+    log.info(
+        f"Found {len(sr_outlier_idxs)} outliers in the PDF grid based on V, V3 and V8 sum rules"
+    )
     return sr_outlier_idxs
-    
