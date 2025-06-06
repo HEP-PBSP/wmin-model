@@ -8,8 +8,9 @@ import logging
 import os
 
 import numpy as np
+from scipy.special import beta, gamma, betainc
 import tensorflow as tf
-from colibri.constants import EXPORT_LABELS, LHAPDF_XGRID
+from colibri.constants import EXPORT_LABELS, LHAPDF_XGRID, FLAVOUR_TO_ID_MAPPING
 from colibri.export_results import write_exportgrid
 from n3fit.model_gen import pdfNN_layer_generator
 
@@ -112,6 +113,231 @@ def n3fit_pdf_grid(
     return pdf_array
 
 
+def XGRID():
+    return np.array(LHAPDF_XGRID)
+
+
+def gluon_singlet_prepro(
+    XGRID: np.array, N_rep: int, seed: int = 1, sum_rules: bool = True
+) -> np.array:
+    """
+    Returns an array of shape (N_rep, 2, N_x), where the first of the flavour indexes
+    is the singlet and the second is the gluon.
+    The N-replicas are randomly generated using uniform initialisation of the preprocessing
+    exponents alpha and beta.
+    When sum_rules is True, the sum rules are enforced.
+
+    Parameters
+    ----------
+    XGRID : np.ndarray
+        x grid.
+    N_rep : int
+        Number of replicas.
+    seed : int, optional
+        Seed for random number generator, by default 1.
+    sum_rules : bool, optional
+        Whether to enforce sum rules, by default True.
+
+    Returns
+    -------
+    np.ndarray
+        Array of gluon and singlet PDFs of shape (N_rep, 2, N_x).
+    """
+    sng_flav = FLAV_INFO[0]
+    g_flav = FLAV_INFO[1]
+
+    rng = np.random.default_rng(seed=np.random.randint(100000000))
+
+    alphas_g = rng.uniform(
+        low=g_flav["smallx"][0], high=g_flav["smallx"][1], size=N_rep
+    )
+    betas_g = rng.uniform(low=g_flav["largex"][0], high=g_flav["largex"][1], size=N_rep)
+
+    alphas_sng = rng.uniform(
+        low=sng_flav["smallx"][0], high=sng_flav["smallx"][1], size=N_rep
+    )
+    betas_sng = rng.uniform(
+        low=sng_flav["largex"][0], high=sng_flav["largex"][1], size=N_rep
+    )
+
+    g_pdf = XGRID[:, None] ** (1 - alphas_g) * (1 - XGRID[:, None]) ** betas_g
+    sng_pdf = XGRID[:, None] ** (1 - alphas_sng) * (1 - XGRID[:, None]) ** betas_sng
+
+    # normalise PDF for sum rules (integral of x (g + sng))
+    if sum_rules:
+        norm = beta(2 - alphas_sng, 1 + betas_sng) + beta(2 - alphas_g, 1 + betas_g)
+    else:
+        norm = 1
+
+    sng_pdf = sng_pdf / norm
+    g_pdf = g_pdf / norm
+
+    # stack pdfs together to form (N_rep, N_flav, N_x)
+    pdf = np.stack([sng_pdf, g_pdf], axis=1)
+    pdf = np.swapaxes(pdf, 0, 2)
+    return pdf
+
+
+def evolution_prepro(
+    XGRID: np.array, flav: dict, N_rep: int, seed: int = 1, sum_rules: bool = True
+) -> np.array:
+    """
+    For a given flavour, generate preprocessing PDF
+
+    f_fl = A_fl x^(1 - alpha_fl) (1 - x)^beta_fl
+
+    Parameters
+    ----------
+    XGRID : np.ndarray
+        x grid.
+    flav : dict
+        Flavour information.
+    N_rep : int
+        Number of replicas.
+    seed : int, optional
+        Seed for random number generator, by default 1.
+    sum_rules : bool, optional
+        Whether to enforce sum rules, by default True.
+
+    Returns
+    -------
+    np.ndarray
+        Array of PDFs of shape (N_rep, N_x).
+    """
+    rng = np.random.default_rng(seed=np.random.randint(100000000))
+    alphas = rng.uniform(low=flav["smallx"][0], high=flav["smallx"][1], size=N_rep)
+    betas = rng.uniform(low=flav["largex"][0], high=flav["largex"][1], size=N_rep)
+
+    pdf = XGRID[:, None] ** (-alphas) * (1 - XGRID[:, None]) ** betas
+
+    # # normalise PDF for sum rules if needed
+    if sum_rules:
+        if flav["fl"] in ["v", "v3", "v8"]:
+            norm = np.trapz(pdf, x=XGRID, axis=0)
+            # norm = -betainc(1 - alphas, 1 + betas, XGRID[0]) + (gamma(1 - alphas) * gamma(1 + betas))/gamma(2 - alphas + betas)
+            # norm = beta(1 - alphas, 1 + betas)
+            # import IPython; IPython.embed()
+            if flav["fl"] == "v" or flav["fl"] == "v8":
+                pdf = 3 * pdf / norm
+            elif flav["fl"] == "v3":
+                pdf = pdf / norm
+    xpdf = XGRID[:, None] * pdf
+    return xpdf.T
+
+
+def preprocessing_pdf_matrix(
+    XGRID: np.array, N_rep: int, seed: int = 1, sum_rules: bool = True
+) -> np.array:
+    """
+    Generate a matrix of preprocessing PDFs.
+    The generated grid is supposed to be x f_k(x) and has shape (N_rep, N_flav, N_x).
+
+    Parameters
+    ----------
+    XGRID : np.ndarray
+        x grid.
+    N_rep : int
+        Number of replicas.
+    seed : int, optional
+        Seed for random number generator, by default 1.
+    sum_rules : bool, optional
+        Whether to enforce sum rules, by default True.
+
+    Returns
+    -------
+    np.ndarray
+        Array of PDFs of shape (N_rep, N_flav, N_x).
+    """
+    pdfs = []
+
+    EV_FLAV_INFO_NNPDF40 = [
+        flav for flav in FLAV_INFO if flav["fl"] not in ["sng", "g"]
+    ]
+
+    for flav in EV_FLAV_INFO_NNPDF40:
+        pdf = evolution_prepro(XGRID, flav, N_rep, seed=seed, sum_rules=sum_rules)
+        pdfs.append(pdf)
+
+    sng_g = gluon_singlet_prepro(XGRID, N_rep, seed=seed, sum_rules=sum_rules)
+
+    # reshape pdfs to (N_rep, N_flav, N_x)
+    pdfs = np.array(pdfs)
+    pdfs = np.swapaxes(pdfs, 0, 1)
+    ic_pdfs_matrix = np.concatenate([sng_g, pdfs], axis=1)
+
+    # Add all other flavours (tot=14) with the Intrinsic Charm relations
+    # order is: "photon", "singlet", "g", "V", "V3", "V8", "V15", "V24", "V35", "T3", "T8", "T15", "T24", "T35"
+    pdfs_matrix = np.zeros((N_rep, 14, len(XGRID)), dtype=np.float64)
+    # photon is zero
+    # singlet
+    pdfs_matrix[:, FLAVOUR_TO_ID_MAPPING[r"\Sigma"], :] = ic_pdfs_matrix[:, 0, :]
+    # gluon
+    pdfs_matrix[:, FLAVOUR_TO_ID_MAPPING["g"], :] = ic_pdfs_matrix[:, 1, :]
+    # V
+    pdfs_matrix[:, FLAVOUR_TO_ID_MAPPING["V"], :] = ic_pdfs_matrix[:, 2, :]
+    # V3
+    pdfs_matrix[:, FLAVOUR_TO_ID_MAPPING["V3"], :] = ic_pdfs_matrix[:, 3, :]
+    # V8
+    pdfs_matrix[:, FLAVOUR_TO_ID_MAPPING["V8"], :] = ic_pdfs_matrix[:, 4, :]
+    # V15 = V
+    pdfs_matrix[:, FLAVOUR_TO_ID_MAPPING["V15"], :] = pdfs_matrix[
+        :, FLAVOUR_TO_ID_MAPPING["V"], :
+    ]
+    # V24 = V
+    pdfs_matrix[:, FLAVOUR_TO_ID_MAPPING["V24"], :] = pdfs_matrix[
+        :, FLAVOUR_TO_ID_MAPPING["V"], :
+    ]
+    # V35 = V
+    pdfs_matrix[:, FLAVOUR_TO_ID_MAPPING["V35"], :] = pdfs_matrix[
+        :, FLAVOUR_TO_ID_MAPPING["V"], :
+    ]
+    # T3
+    pdfs_matrix[:, FLAVOUR_TO_ID_MAPPING["T3"], :] = ic_pdfs_matrix[:, 5, :]
+    # T8
+    pdfs_matrix[:, FLAVOUR_TO_ID_MAPPING["T8"], :] = ic_pdfs_matrix[:, 6, :]
+    # T15
+    pdfs_matrix[:, FLAVOUR_TO_ID_MAPPING["T15"], :] = ic_pdfs_matrix[:, 7, :]
+    # T24 = singlet
+    pdfs_matrix[:, FLAVOUR_TO_ID_MAPPING["T24"], :] = pdfs_matrix[
+        :, FLAVOUR_TO_ID_MAPPING[r"\Sigma"], :
+    ]
+    # T35 = singlet
+    pdfs_matrix[:, FLAVOUR_TO_ID_MAPPING["T35"], :] = pdfs_matrix[
+        :, FLAVOUR_TO_ID_MAPPING[r"\Sigma"], :
+    ]
+
+    # filter out replicas oscillating too much
+    pdfs_matrix = sign_flip_selection(pdfs_matrix)
+
+    # filter sum rules outliers
+    from wmin.sr_normaliser import valence_sum_rules_outliers
+
+    outlier_idxs = valence_sum_rules_outliers(pdfs_matrix, LHAPDF_XGRID)
+    pdfs_matrix = np.delete(pdfs_matrix, outlier_idxs, axis=0)
+
+    log.info(f"Identified {len(outlier_idxs)} sum rules outliers")
+    log.info(f"New shape of pdf matrix is {pdfs_matrix.shape}")
+
+    # filter from arclength outliers
+    filter_arclength_outliers = True
+    while filter_arclength_outliers:
+        replicas_arclengths = arclength_pdfgrid(XGRID, pdfs_matrix)
+        # find outliers based on arclength interquartile range
+        outliers = arclength_outliers(replicas_arclengths)
+
+        log.info(f"Found {len(outliers)} arclength outliers in the PDF grid")
+
+        # delete outliers from the grid
+        pdfs_matrix = np.delete(pdfs_matrix, outliers, axis=0)
+
+        # interrupt if no outliers are found
+        if len(outliers) == 0:
+            log.info("No more outliers found in the PDF grid")
+            filter_arclength_outliers = False
+
+    return pdfs_matrix
+
+
 def get_X_matrix(pdf_grid: np.ndarray) -> tuple:
     """
     Convert and center (wrt to mean over replicas) the PDF grid
@@ -144,14 +370,14 @@ def get_X_matrix(pdf_grid: np.ndarray) -> tuple:
     return pdfgrid, phi0
 
 
-def pod_basis(n3fit_pdf_grid: np.ndarray, Neig: int) -> np.ndarray:
+def pod_basis(preprocessing_pdf_matrix: np.ndarray, Neig: int) -> np.ndarray:
     """
     Performs a singular value decomposition (SVD) and Principal Component Analysis (PCA)
     on the PDF grid by returning the first Neig left singuar vectors.
 
     Parameters
     ----------
-    n3fit_pdf_grid : numpy.ndarray, shape = (nreplicas, nflavours, nx)
+    preprocessing_pdf_matrix : numpy.ndarray, shape = (nreplicas, nflavours, nx)
         The PDF grid to be processed.
     Neig : int
         The number of eigenvectors to be returned.
@@ -161,7 +387,7 @@ def pod_basis(n3fit_pdf_grid: np.ndarray, Neig: int) -> np.ndarray:
     U : numpy.ndarray, shape = (Neig, nflavours, nx)
         The first Neig left singular vectors of the PDF grid.
     """
-    X, phi0 = get_X_matrix(n3fit_pdf_grid)
+    X, phi0 = get_X_matrix(preprocessing_pdf_matrix)
 
     # NOTE: only need left-singular matrix for POD
     U, S, _Vt = np.linalg.svd(X, full_matrices=False)
@@ -172,8 +398,12 @@ def pod_basis(n3fit_pdf_grid: np.ndarray, Neig: int) -> np.ndarray:
     pod = (U @ np.diag(S))[:, :Neig]
 
     # Reshape U to (Neig, Nflavours, Nx)
-    pod = (pod.T).reshape(Neig, n3fit_pdf_grid.shape[1], n3fit_pdf_grid.shape[2])
-    phi0 = phi0.reshape(n3fit_pdf_grid.shape[1], n3fit_pdf_grid.shape[2])
+    pod = (pod.T).reshape(
+        Neig, preprocessing_pdf_matrix.shape[1], preprocessing_pdf_matrix.shape[2]
+    )
+    phi0 = phi0.reshape(
+        preprocessing_pdf_matrix.shape[1], preprocessing_pdf_matrix.shape[2]
+    )
     return pod, phi0
 
 
