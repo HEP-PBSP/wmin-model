@@ -30,8 +30,8 @@ class WminUltraNestLogLikelihood(LogLikelihood):
         ns_settings,
         chi2,
         penalty_posdata,
-        alpha,
-        lambda_positivity,
+        positivity_penalty_settings,
+        integrability_penalty,
         wmin_regularisation_settings={},
     ):
         super().__init__(
@@ -44,8 +44,8 @@ class WminUltraNestLogLikelihood(LogLikelihood):
             ns_settings,
             chi2,
             penalty_posdata,
-            alpha,
-            lambda_positivity,
+            positivity_penalty_settings,
+            integrability_penalty,
         )
         self.wmin_regularisation_settings = wmin_regularisation_settings
 
@@ -103,8 +103,8 @@ def log_likelihood(
     positivity_fast_kernel_arrays,
     ns_settings,
     _penalty_posdata,
-    alpha,
-    lambda_positivity,
+    positivity_penalty_settings,
+    integrability_penalty,
     wmin_regularisation_settings={},
 ):
     """
@@ -120,7 +120,7 @@ def log_likelihood(
         ns_settings,
         chi2,
         _penalty_posdata,
-        alpha,
-        lambda_positivity,
+        positivity_penalty_settings,
+        integrability_penalty,
         wmin_regularisation_settings,
     )
