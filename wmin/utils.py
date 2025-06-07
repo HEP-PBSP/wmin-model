@@ -8,6 +8,7 @@ import resource
 import time
 
 import jax
+import jax.numpy as jnp
 import pandas as pd
 from colibri.likelihood import LogLikelihood
 from colibri.loss_functions import chi2
@@ -76,6 +77,8 @@ def likelihood_time(
 
     lambda_positivity: int, 1000
 
+    wmin_regularisation_settings: dict, {}
+
     Returns
     -------
     df: pd.DataFrame
@@ -88,7 +91,9 @@ def likelihood_time(
     central_values = central_inv_covmat_index.central_values
     ndata = len(central_values)
 
-    log_likelihood = LogLikelihood(
+    from wmin.ultranest_fit import WminUltraNestLogLikelihood
+
+    log_likelihood = WminUltraNestLogLikelihood(
         central_inv_covmat_index,
         pdf_model,
         FIT_XGRID,
@@ -131,3 +136,43 @@ def likelihood_time(
         index=["wmin"],
     )
     return df
+
+
+def wmin_l1_penalty(params, lambda_factor):
+    """
+    L1 penalty for the wmin model.
+
+    Parameters
+    ----------
+    params: array
+        The parameters to use.
+
+    lambda_factor: float
+        The lambda factor to use.
+
+    Returns
+    -------
+    penalty: float
+        The penalty.
+    """
+    return lambda_factor * jnp.sum(jnp.abs(params), axis=-1)
+
+
+def wmin_l2_penalty(params, lambda_factor):
+    """
+    L2 penalty for the wmin model.
+
+    Parameters
+    ----------
+    params: array
+        The parameters to use.
+
+    lambda_factor: float
+        The lambda penalty factor to use.
+
+    Returns
+    -------
+    penalty: float
+        The penalty.
+    """
+    return lambda_factor * jnp.sum(params**2, axis=-1)
