@@ -11,7 +11,6 @@ wmin_providers = [
     "wmin.model",
     "wmin.utils",
     "wmin.basis",
-    "wmin.wmin_ultranest_likelihood",
     "wmin.ultranest_fit",
 ]
 
