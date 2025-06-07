@@ -3,18 +3,17 @@ Module containing standard pytest data configurations for testing purposes.
 """
 
 from colibri.tests.conftest import TEST_PDFSET
+from colibri.core import PriorSettings
 
 EXE = "wmin"
 POSTFIT_EXE = "mc_postfit"
 
-TEST_PRIOR_SETTINGS_WMIN = {
-    "prior_settings": {
-        "type": "uniform_parameter_prior",
-        "max_val": 10.0,
-        "min_val": -10.0,
+TEST_PRIOR_SETTINGS_WMIN = PriorSettings(
+    **{
+        "prior_distribution": "uniform_parameter_prior",
+        "prior_distribution_specs": {"max_val": 10.0, "min_val": -10.0},
     }
-}
-
+)
 TEST_WMIN_SETTINGS_NBASIS_10 = {
     "wmin_settings": {"wminpdfset": TEST_PDFSET, "n_basis": 10}
 }

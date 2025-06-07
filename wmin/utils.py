@@ -3,17 +3,16 @@ wmin.utils is a module that contains several utils for PDF fits in
 the wmin parameterization.
 """
 
-import time
-import resource
 import logging
+import resource
+import time
 
 import jax
 import jax.numpy as jnp
 import pandas as pd
+from colibri.likelihood import LogLikelihood
 from colibri.loss_functions import chi2
-
 from reportengine.table import table
-
 
 log = logging.getLogger(__name__)
 

@@ -10,7 +10,5 @@ dependencies:
   - pandoc
   - mpi4py
   - ultranest
-  - pip
   - pip:
-    - -e .
-    - git+https://github.com/HEP-PBSP/colibri.git 
+    - -e . 

@@ -85,7 +85,7 @@ def test_likelihood_dis_wmin(wmin_model_settings):
         **{**wmin_model_settings, "output_path": None, "dump_model": False}
     )
     # get bayesian prior
-    prior = bayesian_prior(**TEST_PRIOR_SETTINGS_WMIN)
+    prior = bayesian_prior(TEST_PRIOR_SETTINGS_WMIN)
 
     pred_and_pdf = pdf_model.pred_and_pdf_func(FIT_XGRID, forward_map=forward_map)
 
@@ -144,7 +144,7 @@ def test_likelihood_had_wmin(wmin_model_settings):
     )
 
     # get bayesian prior
-    prior = bayesian_prior(**TEST_PRIOR_SETTINGS_WMIN)
+    prior = bayesian_prior(TEST_PRIOR_SETTINGS_WMIN)
 
     pred_and_pdf = pdf_model.pred_and_pdf_func(FIT_XGRID, forward_map=forward_map)
 
@@ -203,7 +203,7 @@ def test_likelihood_global_wmin(wmin_model_settings):
     )
 
     # get bayesian prior
-    prior = bayesian_prior(**TEST_PRIOR_SETTINGS_WMIN)
+    prior = bayesian_prior(TEST_PRIOR_SETTINGS_WMIN)
 
     pred_and_pdf = pdf_model.pred_and_pdf_func(FIT_XGRID, forward_map=forward_map)
 
@@ -236,9 +236,9 @@ def test_likelihood_is_correct_type(float_type):
     Tests that the likelihood is compiled with the correct float type.
     """
 
-    regression_path = pathlib.Path("colibri/models/wmin/wmin/tests/regression_runcards")
+    regression_path = pathlib.Path("wmin/tests/regression_runcards")
     dir_path = (
-        pathlib.Path("colibri/models/wmin/wmin/tests/regression_runcards")
+        pathlib.Path("wmin/tests/regression_runcards")
         / RUNCARD_WMIN_LIKELIHOOD_TYPE.split(".")[0]
     )
 

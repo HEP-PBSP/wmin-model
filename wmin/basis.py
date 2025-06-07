@@ -2,14 +2,13 @@
 wmin.basis.py
 
 This module contains the functions that allow to construct a basis for the wmin parametrisation.
-The main target used for the construction of the basis at this stage is the simultaneous 
+The main target used for the construction of the basis at this stage is the simultaneous
 satisfaction of the momentum, u-valence and d-valence sum rules.
 """
 
 import numpy as np
 import logging
 import os
-import yaml
 import pathlib
 import shutil
 
@@ -29,11 +28,11 @@ from validphys.checks import check_pdf_is_montecarlo
 
 from colibri.constants import (
     LHAPDF_XGRID,
-    evolution_to_flavour_matrix,
     EXPORT_LABELS,
     FLAVOUR_TO_ID_MAPPING,
 )
-from colibri.export_results import write_exportgrid
+from colibri.export_results import write_exportgrid, get_pdfgrid_from_exportgrids
+from colibri.utils import get_fit_path
 
 
 log = logging.getLogger(__name__)
@@ -55,25 +54,170 @@ def sum_rules_dict(pdf, Q=1.65):
     Returns
     -------
     dict
-        A dictionary containing the sum rules for the given PDF set.
+        A nested dictionary with key name of the PDF set and value a dictionary
+        containing the sum rules values for the replicas of the PDF set.
     """
     return {str(pdf): sum_rules(pdf, Q)}
 
 
 """
-Collects the sum rules for all PDF sets.
+Collects the sum rules for all PDF sets. Is a list of nested sum_rules_dict dictionaries.
 """
 pdfs_sum_rules = collect("sum_rules_dict", ("pdfs",))
 
 
-def basis_replica_selector(
-    pdfs_sum_rules, sum_rule_atol=1e-3, Q=1.65, xgrid=LHAPDF_XGRID
+def wmin_basis_replica_selector(sum_rule_dict, sum_rule_atol=1e-2):
+    """
+    For a pdf set select replicas that simultaneously pass the
+    momentum, u-valence, d-valence, s-valence, and c-valence sum rules to the required accuracy.
+    Returns an array of indices corresponding to the pdf replicas passing the required accuracy.
+
+    Parameters
+    ----------
+    sum_rule_dict: dict
+
+    sum_rule_atol: float, default is 1e-2
+        the absolute tolerance for the sum rules.
+    """
+    sum_rules_types = ["momentum", "uvalence", "dvalence", "svalence", "cvalence"]
+    sum_rules_values = {
+        sum_rule_type: sum_rule_dict[sum_rule_type] for sum_rule_type in sum_rules_types
+    }
+    sum_rules_indices = [
+        np.where(
+            np.isclose(
+                sum_rules_values[sum_rule_type],
+                KNOWN_SUM_RULES_EXPECTED[sum_rule_type],
+                atol=sum_rule_atol,
+            )
+        )[0]
+        for sum_rule_type in sum_rules_types
+    ]
+
+    # Select replicas that pass all sum rules simultaneously
+    selected_replicas_idxs = sum_rules_indices[0]  # Start with the first index set
+
+    for sr_idx in sum_rules_indices[1:]:
+        selected_replicas_idxs = np.intersect1d(selected_replicas_idxs, sr_idx)
+
+    return selected_replicas_idxs
+
+
+def wmin_basis_sum_rules_normalization(
+    pdf_grid, sum_rule_dict, selected_replicas_idxs=slice(None)
 ):
     """
-    For each pdf set select replicas that simultaneously pass the
-    momentum, u-valence, d-valence, s-valence, and c-valence sum rules to the required accuracy.
+    Normalizes the pdf grid so that the sum rules are exact.
+
+    Parameters
+    ----------
+    pdf_grid: np.array, shape (Nreplicas x Nfl x Ngrid)
+
+    sum_rule_dict: dict
+        A dictionary containing the sum rules in the flavour basis for the given PDF set.
+
+    selected_replicas_idxs: slice
+        list of indices of replicas to be selected from the pdf_grid.
+
+    Returns
+    -------
+    np.array, an array of shape (Nreplicas x Nfl x Ngrid)
+    """
+
+    momentum_sr = sum_rule_dict["momentum"][selected_replicas_idxs]
+    uvalence_sr = sum_rule_dict["uvalence"][selected_replicas_idxs]
+    dvalence_sr = sum_rule_dict["dvalence"][selected_replicas_idxs]
+    svalence_sr = sum_rule_dict["svalence"][selected_replicas_idxs]
+
+    # normalize the pdf grid so that sum rules are exact
+    Amomentum = momentum_sr
+    Avalence = uvalence_sr + dvalence_sr + svalence_sr
+    Avalence3 = uvalence_sr - dvalence_sr
+    Avalence8 = uvalence_sr + dvalence_sr - 2 * svalence_sr
+
+    pdf_grid[
+        :, [FLAVOUR_TO_ID_MAPPING["\Sigma"], FLAVOUR_TO_ID_MAPPING["g"]], :
+    ] /= Amomentum[:, None, None]
+    pdf_grid[:, [FLAVOUR_TO_ID_MAPPING["V"]], :] *= 3 / Avalence[:, None, None]
+    pdf_grid[:, [FLAVOUR_TO_ID_MAPPING["V3"]], :] *= 1 / Avalence3[:, None, None]
+    pdf_grid[:, [FLAVOUR_TO_ID_MAPPING["V8"]], :] *= 3 / Avalence8[:, None, None]
+
+    return pdf_grid
+
+
+def wmin_pdfbasis_normalization(pdf_grid, pdf_basis="intrinsic_charm"):
+    """
+    Imposes certain conditions on the 14 PDF flavours in the evolution basis.
+
+    Intrinsic charm basis:
+    V = V15 = V24 = V35 and Sigma = T24 = T35, this means that
+    in this basis we have 8 independent PDF flavours (photon is zero).
+
+    Perturbative charm basis:
+    V = V15 = V24 = V35 and Sigma = T15 = T24 = T35, this means that
+    in this basis we have 7 independent PDF flavours (photon is zero).
+
+    Parameters
+    ----------
+    pdf_grid: np.array, shape (Nreplicas x Nfl x Ngrid)
+
+    pdf_basis: str, default is "intrinsic_charm"
+        The PDF basis to normalize to, can be either "intrinsic_charm" or "perturbative_charm".
+
+
+    Returns
+    -------
+    np.array, an array of shape (Nreplicas x Nfl x Ngrid)
+    """
+    # check if the pdf_basis is valid
+    if pdf_basis not in ["intrinsic_charm", "perturbative_charm"]:
+        raise ValueError(
+            f"pdf_basis must be either 'intrinsic_charm' or 'perturbative_charm', got {pdf_basis}"
+        )
+
+    sigma = pdf_grid[:, FLAVOUR_TO_ID_MAPPING["\Sigma"], :]
+    valence = pdf_grid[:, FLAVOUR_TO_ID_MAPPING["V"], :]
+
+    if pdf_basis == "intrinsic_charm":
+        # impose the intrinsic charm basis: V = V15 = V24 = V35 and Sigma = T24 = T35
+        pdf_grid[:, FLAVOUR_TO_ID_MAPPING["V15"], :] = valence
+        pdf_grid[:, FLAVOUR_TO_ID_MAPPING["V24"], :] = valence
+        pdf_grid[:, FLAVOUR_TO_ID_MAPPING["V35"], :] = valence
+        pdf_grid[:, FLAVOUR_TO_ID_MAPPING["T24"], :] = sigma
+        pdf_grid[:, FLAVOUR_TO_ID_MAPPING["T35"], :] = sigma
+
+    elif pdf_basis == "perturbative_charm":
+        # impose the perturbative charm basis: V = V15 = V24 = V35 and Sigma = T15 = T24 = T35
+        pdf_grid[:, FLAVOUR_TO_ID_MAPPING["V15"], :] = valence
+        pdf_grid[:, FLAVOUR_TO_ID_MAPPING["V24"], :] = valence
+        pdf_grid[:, FLAVOUR_TO_ID_MAPPING["V35"], :] = valence
+        pdf_grid[:, FLAVOUR_TO_ID_MAPPING["T15"], :] = sigma
+        pdf_grid[:, FLAVOUR_TO_ID_MAPPING["T24"], :] = sigma
+        pdf_grid[:, FLAVOUR_TO_ID_MAPPING["T35"], :] = sigma
+
+    return pdf_grid
+
+
+def wmin_basis_pdf_grid(
+    pdfs_sum_rules,
+    pdf_basis="intrinsic_charm",
+    Q=1.65,
+    xgrid=LHAPDF_XGRID,
+    sum_rule_atol=1e-2,
+):
+    """
     Returns a pdf grid of dimension (Nreplicas x Nfl x Ngrid) that combines all the replicas from
-    different PDF sets at the given scale Q
+    different PDF sets at the given scale Q.
+    The function also ensures that the sum rules are satisfied exactly and that the pdf basis is consistent.
+
+    The function returns a pdf grid of dimension (Nreplicas x Nfl x Ngrid) that combines the replicas
+    from the specified PDF sets following this rules:
+
+    1. Select replicas that pass all sum rules simultaneously. Some replicas might not be integrable at the given scale Q
+    hence we need would not be able to normalize them to satisfy the sum rules.
+    2. Normalises the basis so that it is consistent with the chosen PDF Basis, e.g. Intrinsic or Perturbative charm.
+    3. Normalises replicas so that sum rules hold exactly.
+    4. Combines replicas from different PDF sets into a single grid at the given scale Q.
 
     Parameters
     ----------
@@ -100,96 +244,39 @@ def basis_replica_selector(
 
         for pdf, sr in sr_dict.items():
 
-            momentum_sr = sr["momentum"]
-            uvalence_sr = sr["uvalence"]
-            dvalence_sr = sr["dvalence"]
-            svalence_sr = sr["svalence"]
-            cvalence_sr = sr["cvalence"]
-
-            momentum_sr_idx = np.where(
-                np.isclose(
-                    momentum_sr,
-                    KNOWN_SUM_RULES_EXPECTED["momentum"],
-                    atol=sum_rule_atol,
-                )
-            )[0]
-            uvalence_sr_idx = np.where(
-                np.isclose(
-                    uvalence_sr,
-                    KNOWN_SUM_RULES_EXPECTED["uvalence"],
-                    atol=sum_rule_atol,
-                )
-            )[0]
-            dvalence_sr_idx = np.where(
-                np.isclose(
-                    dvalence_sr,
-                    KNOWN_SUM_RULES_EXPECTED["dvalence"],
-                    atol=sum_rule_atol,
-                )
-            )[0]
-            svalence_sr_idx = np.where(
-                np.isclose(
-                    svalence_sr,
-                    KNOWN_SUM_RULES_EXPECTED["svalence"],
-                    atol=sum_rule_atol,
-                )
-            )[0]
-            cvalence_sr_idx = np.where(
-                np.isclose(
-                    cvalence_sr,
-                    KNOWN_SUM_RULES_EXPECTED["cvalence"],
-                    atol=sum_rule_atol,
-                )
-            )[0]
-
             # Select replicas that pass all sum rules simultaneously
-            selected_replicas_idxs = np.intersect1d(
-                np.intersect1d(
-                    np.intersect1d(
-                        np.intersect1d(momentum_sr_idx, uvalence_sr_idx),
-                        dvalence_sr_idx,
-                    ),
-                    svalence_sr_idx,
-                ),
-                cvalence_sr_idx,
+            # Note: this is needed as otherwise some PDF replicas, even when explicitly normalized, might not satisfy the sum rules
+            selected_replicas_idxs = wmin_basis_replica_selector(
+                sr, sum_rule_atol=sum_rule_atol
             )
+            if len(selected_replicas_idxs) == 0:
+                log.warning(
+                    "No replicas pass the sum rule tolerance, either adjust the tolerance or change the set"
+                )
+                raise ValueError("Tolerance not reached by any replica")
 
             log.info(
                 f"Selected {len(selected_replicas_idxs)} replicas for {pdf} that pass all sum rules simultaneously"
             )
 
-            # Calculate the pdf grid for the selected replicas at the given scale Q and xgrid
+            # Calculate the pdf grid at the given scale Q and xgrid
             pdf_grid = convolution.evolution.grid_values(
                 PDF(pdf), convolution.FK_FLAVOURS, xgrid, [Q]
             ).squeeze(-1)[selected_replicas_idxs]
 
-            # normalize the pdf grid so that sum rules are exact
-            Amomentum = momentum_sr[selected_replicas_idxs]
-            Avalence = (
-                uvalence_sr[selected_replicas_idxs]
-                + dvalence_sr[selected_replicas_idxs]
-                + svalence_sr[selected_replicas_idxs]
+            # Normalize the pdf grid so that sum rules are exact
+            pdf_grid = wmin_basis_sum_rules_normalization(
+                pdf_grid,
+                sum_rule_dict=sr,
+                selected_replicas_idxs=selected_replicas_idxs,
             )
-            Avalence3 = (
-                uvalence_sr[selected_replicas_idxs]
-                - dvalence_sr[selected_replicas_idxs]
-            )
-            Avalence8 = (
-                uvalence_sr[selected_replicas_idxs]
-                + dvalence_sr[selected_replicas_idxs]
-                - 2 * svalence_sr[selected_replicas_idxs]
-            )
+            log.info(f"Normalized the {str(pdf)} grid so that sum rules are exact")
 
-            pdf_grid[
-                :, [FLAVOUR_TO_ID_MAPPING["\Sigma"], FLAVOUR_TO_ID_MAPPING["g"]], :
-            ] /= Amomentum[:, None, None]
-            pdf_grid[:, [FLAVOUR_TO_ID_MAPPING["V"]], :] *= 3 / Avalence[:, None, None]
-            pdf_grid[:, [FLAVOUR_TO_ID_MAPPING["V3"]], :] *= (
-                1 / Avalence3[:, None, None]
-            )
-            pdf_grid[:, [FLAVOUR_TO_ID_MAPPING["V8"]], :] *= (
-                3 / Avalence8[:, None, None]
-            )
+            # Normalize the pdf grid so that pdf basis is consistent with the chosen PDF Basis
+            # Note: pdf basis normalisation is done after sum rule normalisation. This is because the sum rule normalisation
+            # changes the values of V and Sigma
+            pdf_grid = wmin_pdfbasis_normalization(pdf_grid, pdf_basis=pdf_basis)
+            log.info(f"Normalized the {str(pdf)} grid to {pdf_basis} basis")
 
             wmin_basis.append(pdf_grid)
 
@@ -197,7 +284,7 @@ def basis_replica_selector(
 
 
 def write_wmin_basis(
-    basis_replica_selector,
+    wmin_basis_pdf_grid,
     output_path,
     Q=1.65,
     xgrid=LHAPDF_XGRID,
@@ -206,7 +293,6 @@ def write_wmin_basis(
     """
     Writes the wmin basis at the parametrisation scale Q to the output_path.
     """
-    wmin_basis_pdf_grid = basis_replica_selector
 
     replicas_path = str(output_path) + "/replicas"
     if not os.path.exists(replicas_path):
@@ -236,7 +322,7 @@ def write_wmin_basis(
     )
 
 
-def _create_mc2hessian(
+def _create_mc2pca(
     pdf, Q, xgrid, Neig, output_path, name=None, hessian_normalization=False
 ):
     """
@@ -271,7 +357,7 @@ def mc2_pca(
     Note: mc2hessian_xgrid is taken as the default xgrid that is returned by validphys.mc2hessian.mc2hessian_xgrid
     """
     log.warning("Using default xgrid from mc2hessian_xgrid for PCA.")
-    result_path = _create_mc2hessian(
+    result_path = _create_mc2pca(
         pdf,
         Q=Q,
         xgrid=mc2hessian_xgrid(),
@@ -295,3 +381,126 @@ def mc2_pca(
                 dest.unlink()
         shutil.copytree(result_path, dest)
         log.info("Wmin PDF set installed at %s", dest)
+
+
+def _get_X_exportgrids(pdfgrid: np.array):
+    """
+    Reshapes the pdf grid to (Nfl * Ngrid, Nreplicas) and subtracts the mean over the replicas.
+
+    Parameters
+    ----------
+    pdfgrid: np.array, shape (Nreplicas, Nfl, Ngrid)
+        The pdf grid in the evolution basis.
+
+    Returns
+    -------
+    np.array, shape (Nfl * Ngrid, Nreplicas)
+        The (replicas) mean subtracted pdf grid reshaped to (Nfl * Ngrid, Nreplicas).
+    """
+    # reshape pdfgrid to (Nreplicas, Nfl * Ngrid)
+    pdfgrid = pdfgrid.reshape(pdfgrid.shape[0], pdfgrid.shape[1] * pdfgrid.shape[2])
+
+    # subtract the mean over the replicas
+    pdfgrid -= pdfgrid.mean(axis=0)
+
+    return pdfgrid.T
+
+
+def _get_compressed_pdfgrid(
+    pdf_grid: np.array, Neig: int, hessian_normalization: bool = False
+) -> np.array:
+    """
+    Returns the PCA basis.
+
+    Parameters
+    ----------
+    pdf_grid: np.array
+        The pdf grid in the evolution basis.
+    Neig: int
+        The number of PCA basis vectors to write.
+    hessian_normalization: bool, default is False
+        Whether to normalize the eigenvectors by the square root of the number of
+        replicas minus 1.
+
+
+    Returns
+    -------
+    np.array
+        The PCA compressed pdf grid.
+    """
+    X = _get_X_exportgrids(
+        pdf_grid.copy()
+    )  # copy to avoid modifying the original pdf_grid
+    V = _compress_X(X, Neig)
+
+    if hessian_normalization:
+        norm = np.sqrt(pdf_grid.shape[0] - 1)
+        V /= norm
+
+    # Compute the PCA basis (Z = X @ V), shape is (Nfl * Ngrid, Neig)
+    pca_basis = (
+        X @ V
+        + pdf_grid.mean(axis=0).reshape(pdf_grid.shape[1] * pdf_grid.shape[2])[:, None]
+    )
+    return pca_basis
+
+
+def write_pca_basis_exportgrids(
+    fit_path: pathlib.Path,
+    Neig: int,
+    output_path: pathlib.Path,
+    hessian_normalization: bool = False,
+):
+    """
+    Writes the PCA basis to the output path.
+
+    Parameters
+    ----------
+    fit_path: pathlib.Path
+        The path to the fit containing the replicas.
+    Neig: int
+        The number of PCA basis vectors to write.
+    output_path: pathlib.Path
+        The path to the output directory.
+    hessian_normalization: bool, default is False
+        Whether to normalize the eigenvectors by the square root of the number of
+        replicas minus 1.
+    """
+    pdf_grid = get_pdfgrid_from_exportgrids(fit_path)
+    pca_basis = _get_compressed_pdfgrid(pdf_grid, Neig, hessian_normalization)
+
+    # Copy input runcard to the output path (needed eg for evolution)
+    if not os.path.exists(output_path / "input"):
+        os.makedirs(output_path / "input", exist_ok=True)
+    shutil.copy(fit_path / "input/runcard.yaml", output_path / "input/runcard.yaml")
+
+    # Write the PCA basis to the output path
+    if not os.path.exists(output_path / "replicas"):
+        os.mkdir(output_path / "replicas")
+
+    for i, pca_vec in enumerate(pca_basis.T):
+        exportgrid_path = output_path / f"replicas/replica_{i+1}"
+        if not os.path.exists(exportgrid_path):
+            os.mkdir(exportgrid_path)
+
+        write_exportgrid(
+            grid_for_writing=pca_vec.reshape(pdf_grid.shape[1], pdf_grid.shape[2]),
+            grid_name=exportgrid_path / output_path.name,
+            replica_index=i + 1,
+            Q=1.65,
+            xgrid=LHAPDF_XGRID,
+            export_labels=EXPORT_LABELS,
+        )
+
+
+def pca_basis_from_exportgrids(
+    colibri_fit: str,
+    Neig: int,
+    output_path: pathlib.Path,
+    hessian_normalization: bool = False,
+):
+    """
+    Writes the PCA basis to the output path.
+    """
+    fit_path = get_fit_path(colibri_fit)
+    write_pca_basis_exportgrids(fit_path, Neig, output_path, hessian_normalization)
