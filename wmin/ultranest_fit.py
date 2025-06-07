@@ -9,12 +9,12 @@ the user to add model dependent terms to the likelihood
 import jax
 import jax.numpy as jnp
 from functools import partial
-from colibri.ultranest_fit import UltraNestLogLikelihood
+from colibri.likelihood import LogLikelihood
 from colibri.loss_functions import chi2
 from wmin.utils import wmin_l1_penalty, wmin_l2_penalty
 
 
-class WminUltraNestLogLikelihood(UltraNestLogLikelihood):
+class WminUltraNestLogLikelihood(LogLikelihood):
     """
     UltraNest log likelihood with additional terms for the wmin model.
     """
