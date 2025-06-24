@@ -53,13 +53,13 @@ FLAV_INFO = [
     {
         "fl": "t3",
         "trainable": False,
-        "smallx": [-0.4506, 0.75], #0.9305],
+        "smallx": [-0.4506, 0.9305],
         "largex": [1.745, 3.424],
     },
     {
         "fl": "t8",
         "trainable": False,
-        "smallx": [0.5877, 0.75],#0.8687],
+        "smallx": [0.5877, 0.8687],
         "largex": [1.522, 3.515],
     },
     {
@@ -301,9 +301,14 @@ def sign_flip_selection(pdf_array: np.ndarray) -> np.ndarray:
         n_flips_t3 = sign_flips_counter(f_t3)
         n_flips_t8 = sign_flips_counter(f_t8)
 
-
         # keep the replica only if all V, V3 and V8 have n_flips == 1
-        if n_flips_v <= 1 and n_flips_v8 <= 1 and n_flips_v3 <= 1 and n_flips_t3 <= 1 and n_flips_t8 <= 1:
+        if (
+            n_flips_v <= 1
+            and n_flips_v8 <= 1
+            and n_flips_v3 <= 1
+            and n_flips_t3 <= 1
+            and n_flips_t8 <= 1
+        ):
             one_flips.append(rep)
     log.info(
         f"Found {len(one_flips)} replicas with exactly one sign flip for V, V3, V8, T3 and T8 flavours."

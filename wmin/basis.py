@@ -89,7 +89,6 @@ def n3fit_pdf_grid(
     # shapes here are (nreplicas, nflavours, nx)
     pdf_array = np.array(tf.transpose(pdf_grid, perm=[0, 2, 1]))
 
-
     # filter from arclength outliers
     while filter_arclength_outliers:
         replicas_arclengths = arclength_pdfgrid(xgrid_in.numpy().squeeze(), pdf_array)
