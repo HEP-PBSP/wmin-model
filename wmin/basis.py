@@ -17,7 +17,6 @@ from wmin.utils import (
     FLAV_INFO,
     arclength_outliers,
     arclength_pdfgrid,
-    sign_flip_selection,
 )
 
 log = logging.getLogger(__name__)
@@ -90,8 +89,6 @@ def n3fit_pdf_grid(
     # shapes here are (nreplicas, nflavours, nx)
     pdf_array = np.array(tf.transpose(pdf_grid, perm=[0, 2, 1]))
 
-    # filter out replicas oscillating too much
-    pdf_array = sign_flip_selection(pdf_array)
 
     # filter from arclength outliers
     while filter_arclength_outliers:
