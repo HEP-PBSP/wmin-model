@@ -5,10 +5,14 @@ Test the wmin.basis module.
 """
 
 import pytest
+import shutil
+import pathlib
+import numpy as np
 import unittest
 from unittest.mock import patch
 import numpy as np
 from numpy.testing import assert_allclose
+import os
 
 from wmin.basis import (
     wmin_pdfbasis_normalization,
@@ -16,8 +20,12 @@ from wmin.basis import (
     sum_rules_dict,
     wmin_basis_replica_selector,
     wmin_basis_pdf_grid,
+    _get_X_exportgrids,
+    mc2_pca,
+    write_pca_basis_exportgrids,
+    pca_basis_from_exportgrids,
 )
-from colibri.constants import FLAVOUR_TO_ID_MAPPING, LHAPDF_XGRID
+from colibri.constants import FLAVOUR_TO_ID_MAPPING, LHAPDF_XGRID, EXPORT_LABELS
 from colibri.tests.conftest import TEST_PDFSET
 
 
@@ -331,3 +339,183 @@ def test_wmin_basis_pdf_grid_normalization_calls(
     # Check that the sum rule normalization was called with the expected parameters
     mock_sum_rules_normalization.assert_called()
     mock_basis_normalization.assert_called()
+
+
+def test_get_X_exportgrids():
+    """
+    Test the _get_X_exportgrids function to ensure it correctly reshapes and subtracts the mean of the pdfgrid.
+    """
+    # Mock input data
+    pdfgrid = np.array(
+        [
+            [[1.0, 2.0], [3.0, 4.0]],
+            [[5.0, 6.0], [7.0, 8.0]],
+        ]
+    )  # Shape (2, 2, 2)
+
+    # Expected output
+    reshaped_pdfgrid = pdfgrid.reshape(2, 4)  # Shape (2, 4)
+    mean_subtracted_pdfgrid = reshaped_pdfgrid - reshaped_pdfgrid.mean(axis=0)
+    expected_result = mean_subtracted_pdfgrid.T  # Shape (4, 2)
+    # Call the function under test
+    result = _get_X_exportgrids(pdfgrid)
+
+    # Assertions
+    np.testing.assert_array_equal(
+        result,
+        expected_result,
+        "The reshaped and mean-subtracted pdfgrid result is incorrect.",
+    )
+
+
+def test_mc2_pca():
+    # Mock dependencies
+    mock_pdf = MagicMock()
+    mock_Q = MagicMock()
+    mock_output_path = pathlib.Path("/mock/output/path")
+    mock_gridname = "mock_grid"
+
+    # Mock external functions
+    with patch("pathlib.Path") as MockPath, patch(
+        "wmin.basis.lhaindex.get_lha_datapath", return_value="/mock/lha/path"
+    ), patch("wmin.basis.lhaindex.isinstalled", return_value=False), patch(
+        "shutil.copytree"
+    ), patch(
+        "shutil.rmtree"
+    ), patch(
+        "wmin.basis._create_mc2pca", return_value="/mock/result/path"
+    ) as mock_create_mc2pca, patch(
+        "wmin.basis.mc2hessian_xgrid", return_value="mock_xgrid"
+    ):
+
+        MockPath.return_value = pathlib.Path("/mock/lha/path")
+
+        # Call the function under test
+        mc2_pca(
+            pdf=mock_pdf,
+            Q=mock_Q,
+            Neig=10,
+            output_path=mock_output_path,
+            gridname=mock_gridname,
+            installgrid=True,
+            hessian_normalization=True,
+        )
+
+        # Assertions for _create_mc2pca
+        mock_create_mc2pca.assert_called_once_with(
+            mock_pdf,
+            Q=mock_Q,
+            xgrid="mock_xgrid",
+            Neig=10,
+            output_path=mock_output_path,
+            name=mock_gridname,
+            hessian_normalization=True,
+        )
+
+        # Assertions for installation logic
+        shutil.copytree.assert_called_once_with(
+            "/mock/result/path", pathlib.Path("/mock/lha/path") / mock_gridname
+        )
+        shutil.rmtree.assert_not_called()  # Since isinstalled returns False in this test
+
+
+def test_write_pca_basis_exportgrids():
+    # Mock dependencies
+    mock_fit_path = pathlib.Path("/mock/fit/path")
+    mock_output_path = pathlib.Path("/mock/output/path")
+    mock_pdf_grid = np.random.rand(100, 14, 196)  # Mock PDF grid
+    mock_X = np.random.rand(14 * 196, 100)  # Mock X matrix
+    mock_V = np.random.rand(100, 3)  # Mock PCA basis vectors
+
+    # Mock external functions
+    with patch(
+        "wmin.basis.get_pdfgrid_from_exportgrids", return_value=mock_pdf_grid
+    ) as mock_get_pdfgrid, patch(
+        "wmin.basis._get_X_exportgrids", return_value=mock_X
+    ) as mock_get_X, patch(
+        "wmin.basis._compress_X", return_value=mock_V
+    ) as mock_compress_X, patch(
+        "shutil.copy"
+    ), patch(
+        "os.makedirs"
+    ), patch(
+        "os.mkdir"
+    ), patch(
+        "os.path.exists", return_value=False
+    ), patch(
+        "wmin.basis.write_exportgrid"
+    ) as mock_write_exportgrid:
+
+        # Call the function under test
+        write_pca_basis_exportgrids(
+            fit_path=mock_fit_path,
+            Neig=3,
+            output_path=mock_output_path,
+            hessian_normalization=True,
+        )
+
+        # Assertions for get_pdfgrid_from_exportgrids
+        mock_get_pdfgrid.assert_called_once_with(mock_fit_path)
+
+        # Assertions for _get_X_exportgrids
+
+        np.testing.assert_array_equal(mock_get_X.call_args[0][0], mock_pdf_grid)
+        # mock_get_X.assert_called_once_with(mock_pdf_grid.copy())
+
+        # Assertions for _compress_X
+        mock_compress_X.assert_called_once_with(mock_X, 3)
+
+        # Assertions for directory creation
+        os.makedirs.assert_any_call(mock_output_path / "input", exist_ok=True)
+
+        # Assertions for shutil.copy
+        shutil.copy.assert_called_once_with(
+            mock_fit_path / "input/runcard.yaml",
+            mock_output_path / "input/runcard.yaml",
+        )
+
+        # Assertions for write_exportgrid
+        assert mock_write_exportgrid.call_count == 3
+        for i in range(3):
+            assert (
+                mock_write_exportgrid.call_args_list[i][1]["grid_name"]
+                == mock_output_path / f"replicas/replica_{i+1}" / mock_output_path.name
+            )
+            assert mock_write_exportgrid.call_args_list[i][1]["replica_index"] == i + 1
+            assert mock_write_exportgrid.call_args_list[i][1]["Q"] == 1.65
+            assert mock_write_exportgrid.call_args_list[i][1]["xgrid"] == LHAPDF_XGRID
+            assert (
+                mock_write_exportgrid.call_args_list[i][1]["export_labels"]
+                == EXPORT_LABELS
+            )
+
+
+def test_pca_basis_from_exportgrids():
+    # Mock dependencies
+    mock_colibri_fit = "mock_colibri_fit"
+    mock_fit_path = pathlib.Path("/mock/fit/path")
+    mock_output_path = pathlib.Path("/mock/output/path")
+    mock_Neig = 3
+
+    # Mock external functions
+    with patch(
+        "wmin.basis.get_fit_path", return_value=mock_fit_path
+    ) as mock_get_fit_path, patch(
+        "wmin.basis.write_pca_basis_exportgrids"
+    ) as mock_write_pca_basis_exportgrids:
+
+        # Call the function under test
+        pca_basis_from_exportgrids(
+            colibri_fit=mock_colibri_fit,
+            Neig=mock_Neig,
+            output_path=mock_output_path,
+            hessian_normalization=True,
+        )
+
+        # Assertions for get_fit_path
+        mock_get_fit_path.assert_called_once_with(mock_colibri_fit)
+
+        # Assertions for write_pca_basis_exportgrids
+        mock_write_pca_basis_exportgrids.assert_called_once_with(
+            mock_fit_path, mock_Neig, mock_output_path, True
+        )
