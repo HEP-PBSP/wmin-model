@@ -13,7 +13,7 @@ import pandas as pd
 from colibri.likelihood import LogLikelihood
 from colibri.loss_functions import chi2
 
-from colibri.ultranest_fit import UltraNestLogLikelihood
+from colibri.likelihood import LogLikelihood
 from colibri.constants import FLAVOUR_TO_ID_MAPPING, LHAPDF_XGRID
 
 
