@@ -14,22 +14,24 @@ import argparse
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Shift file indices by -1 and remove index _0000.dat files.'
+        description="Shift file indices by -1 and remove index _0000.dat files."
     )
     parser.add_argument(
-        'directory',
-        nargs='?', default='.',
-        help='Target directory (defaults to current directory)'
+        "directory",
+        nargs="?",
+        default=".",
+        help="Target directory (defaults to current directory)",
     )
     parser.add_argument(
-        '--dry-run', '-n',
-        action='store_true',
-        help='Print the intended operations without executing them'
+        "--dry-run",
+        "-n",
+        action="store_true",
+        help="Print the intended operations without executing them",
     )
     args = parser.parse_args()
 
     # Regex to match prefix and 4-digit index
-    pattern = re.compile(r'^(?P<prefix>.+)_(?P<index>\d{4})\.dat$')
+    pattern = re.compile(r"^(?P<prefix>.+)_(?P<index>\d{4})\.dat$")
 
     # List all files in the target directory
     try:
@@ -40,14 +42,14 @@ def main():
 
     # Identify files to remove and to shift
     to_remove = []
-    to_shift  = []  # (filename, prefix, original_index)
+    to_shift = []  # (filename, prefix, original_index)
 
     for fname in all_files:
         m = pattern.match(fname)
         if not m:
             continue
-        idx = int(m.group('index'))
-        prefix = m.group('prefix')
+        idx = int(m.group("index"))
+        prefix = m.group("prefix")
 
         if idx == 0:
             to_remove.append(fname)
@@ -62,7 +64,7 @@ def main():
             os.remove(full_path)
 
     # First pass: rename originals to temporary names to avoid collisions
-    temp_suffix = '.tmp_renaming'
+    temp_suffix = ".tmp_renaming"
     for fname, prefix, idx in to_shift:
         src = os.path.join(args.directory, fname)
         tmp = src + temp_suffix
@@ -86,6 +88,5 @@ def main():
     print("Done.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
-
