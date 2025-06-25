@@ -2,11 +2,11 @@
 Module containing standard pytest data configurations for testing purposes.
 """
 
-from colibri.tests.conftest import TEST_PDFSET
 from colibri.core import PriorSettings
 
 EXE = "wmin"
 POSTFIT_EXE = "mc_postfit"
+TEST_PDFSET = "NNPDF40_nnlo_as_01180"
 
 TEST_PRIOR_SETTINGS_WMIN = PriorSettings(
     **{
