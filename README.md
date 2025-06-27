@@ -33,7 +33,16 @@ conda env create -n myenv -f environment.yml
 
 ## Usage
 
-The wmin-model code can be mainly used for two applications
+The **wmin-model** supports two primary workflows:
 
-- Generating a POD basis set -> ...
-- Running a POD fit -> ...
+1. **PDF Fits with POD Parametrisation**  
+   Perform parton distribution function (PDF) fits on [NNPDF data]() using the [Colibri Bayesian workflow]() and the linear POD parametrisation
+   introduced in (TODO). 
+
+2. **POD-Basis Construction**  
+   Generate a Proper Orthogonal Decomposition (POD) basis 
+
+Other examples on how to use the code can be found at https://github.com/comane/NNPOD-wiki.git
+   
+
+
