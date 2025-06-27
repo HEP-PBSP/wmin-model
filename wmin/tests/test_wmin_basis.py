@@ -11,16 +11,6 @@ import tempfile
 from unittest.mock import patch, MagicMock
 import numpy as np
 
-# Mock the imports that might not be available in test environment
-import sys
-from unittest.mock import MagicMock
-
-# Mock external dependencies
-sys.modules["colibri.constants"] = MagicMock()
-sys.modules["colibri.export_results"] = MagicMock()
-sys.modules["n3fit.model_gen"] = MagicMock()
-sys.modules["wmin.utils"] = MagicMock()
-
 # Now import the module under test
 from wmin.basis import (
     n3fit_pdf_model,

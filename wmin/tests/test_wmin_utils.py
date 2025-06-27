@@ -80,6 +80,10 @@ def test_likelihood_time_structure():
     """
     test the structure of the output of likelihood_time
     """
+    # Debug: Check what likelihood_time actually is
+    print(f"likelihood_time type: {type(likelihood_time)}")
+    print(f"likelihood_time: {likelihood_time}")
+    print(f"likelihood_time module: {likelihood_time.__module__}")
 
     result = likelihood_time(**SETUP)
     assert isinstance(result, pd.DataFrame)
