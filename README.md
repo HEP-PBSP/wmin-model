@@ -8,8 +8,8 @@ in (TODO: arxiv id).
 
 ## Installation
 
-There are several ways of installing wmin-model, see also [colibri installation instructions](), however, the possibly simplest way
-is to first clone the repository and then using the provided `environment.yml` file":
+There are several ways to install wmin-model, see also [colibri installation instructions](https://hep-pbsp.github.io/colibri/get-started/installation.html), however perhaps the easiest way
+is to clone the repository first and then use the provided `environment.yml` file:
 
 ```bash
 git clone git@github.com:HEP-PBSP/wmin-model.git
@@ -33,4 +33,7 @@ conda env create -n myenv -f environment.yml
 
 ## Usage
 
-The wmin-model code can be used for has two main usage 
+The wmin-model code can be mainly used for two applications
+
+- Generating a POD basis set -> ...
+- Running a POD fit -> ...
