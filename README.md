@@ -36,11 +36,11 @@ conda env create -n myenv -f environment.yml
 The **wmin-model** supports two primary workflows:
 
 1. **PDF Fits with POD Parametrisation**  
-   Perform parton distribution function (PDF) fits on [NNPDF data]() using the [Colibri Bayesian workflow]() and the linear POD parametrisation
+   Perform parton distribution function (PDF) fits on [NNPDF data](https://github.com/NNPDF/nnpdf) using the [Colibri Bayesian workflow](https://github.com/HEP-PBSP/colibri) and the linear POD parametrisation
    introduced in (TODO). 
 
 2. **POD-Basis Construction**  
-   Generate a Proper Orthogonal Decomposition (POD) basis 
+   Generate a Proper Orthogonal Decomposition (POD) basis.
 
 Other examples on how to use the code can be found at https://github.com/comane/NNPOD-wiki.git
    
