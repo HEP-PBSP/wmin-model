@@ -96,6 +96,7 @@ def likelihood_time(
     ns_settings,
     n_prior_samples=1000,
     positivity_penalty_settings={},
+    integrability_penalty=lambda pdf: jax.numpy.array([0]),
 ):
     """
     This function calculates the time it takes to evaluate the likelihood
@@ -157,7 +158,8 @@ def likelihood_time(
         ns_settings,
         chi2,
         _penalty_posdata,
-        positivity_penalty_settings,
+        positivity_penalty_settings=positivity_penalty_settings,
+        integrability_penalty=integrability_penalty,
     )
 
     # sample from prior

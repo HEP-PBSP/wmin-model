@@ -1,8 +1,13 @@
+"""
+Tests for the wmin.utils module.
+"""
+
 from unittest.mock import Mock
 
 import jax.numpy as jnp
 import pandas as pd
 from wmin.utils import likelihood_time
+from colibri.tests.conftest import TEST_XGRID
 
 N_MOCK_DATA = 100
 MOCK_NAME_THEORY = "test_theory"
@@ -18,7 +23,7 @@ fast_kernel_arrays = ((jnp.ones(N_MOCK_DATA)),)
 positivity_fast_kernel_arrays = ((jnp.ones(N_MOCK_DATA)),)
 
 mock_pred_data = lambda pdf, fast_kernel_arrays: jnp.ones(N_MOCK_DATA)
-MOCK_FIT_XGRID = jnp.array([0.1, 0.2, 0.3])
+
 
 NS_SETTINGS = {
     "n_posterior_samples": 10,
@@ -57,7 +62,7 @@ SETUP = {
     "fast_kernel_arrays": fast_kernel_arrays,
     "positivity_fast_kernel_arrays": positivity_fast_kernel_arrays,
     "_pred_data": mock_pred_data,
-    "FIT_XGRID": MOCK_FIT_XGRID,
+    "FIT_XGRID": TEST_XGRID,
     "pdf_model": MockPDFModel(),
     "bayesian_prior": mock_bayesian_prior,
     "theoryid": MOCK_NAME_THEORY,
