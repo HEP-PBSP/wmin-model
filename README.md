@@ -40,7 +40,7 @@ The **wmin-model** supports two primary workflows:
    introduced in (TODO). 
 
 2. **POD-Basis Construction**  
-   Generate a Proper Orthogonal Decomposition (POD) basis -> [wmin/runcards/pod_basis_example.yaml]
+   Generate a Proper Orthogonal Decomposition (POD) basis -> [example_runcard](wmin/runcards/pod_basis_example.yaml)
 
 Other examples on how to use the code can be found at https://github.com/comane/NNPOD-wiki.git
    
