@@ -17,6 +17,7 @@ from colibri.tests.conftest import (
     TEST_DATASETS,
     TEST_DATASETS_DIS_HAD,
     TEST_DATASETS_HAD,
+    MOCK_PDF_MODEL,
 )
 from wmin.api import API as wminAPI
 from wmin.tests.wmin_conftest import (
@@ -85,7 +86,7 @@ def test_likelihood_dis_wmin(wmin_model_settings):
         **{**wmin_model_settings, "output_path": None, "dump_model": False}
     )
     # get bayesian prior
-    prior = bayesian_prior(TEST_PRIOR_SETTINGS_WMIN)
+    prior = bayesian_prior(TEST_PRIOR_SETTINGS_WMIN, MOCK_PDF_MODEL)
 
     pred_and_pdf = pdf_model.pred_and_pdf_func(FIT_XGRID, forward_map=forward_map)
 
@@ -144,7 +145,7 @@ def test_likelihood_had_wmin(wmin_model_settings):
     )
 
     # get bayesian prior
-    prior = bayesian_prior(TEST_PRIOR_SETTINGS_WMIN)
+    prior = bayesian_prior(TEST_PRIOR_SETTINGS_WMIN, MOCK_PDF_MODEL)
 
     pred_and_pdf = pdf_model.pred_and_pdf_func(FIT_XGRID, forward_map=forward_map)
 
@@ -203,7 +204,7 @@ def test_likelihood_global_wmin(wmin_model_settings):
     )
 
     # get bayesian prior
-    prior = bayesian_prior(TEST_PRIOR_SETTINGS_WMIN)
+    prior = bayesian_prior(TEST_PRIOR_SETTINGS_WMIN, MOCK_PDF_MODEL)
 
     pred_and_pdf = pdf_model.pred_and_pdf_func(FIT_XGRID, forward_map=forward_map)
 

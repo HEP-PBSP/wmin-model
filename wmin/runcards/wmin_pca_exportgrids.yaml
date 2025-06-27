@@ -1,5 +1,0 @@
-colibri_fit: example_fit
-Neig: 100
-hessian_normalization: false
-actions_:
-  - pca_basis_from_exportgrids
