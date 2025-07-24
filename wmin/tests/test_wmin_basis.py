@@ -36,7 +36,7 @@ def test_n3fit_pdf_model():
     """Test n3fit_pdf_model function."""
     print("Testing n3fit_pdf_model...")
 
-    with patch("wmin.basis.pdfNN_layer_generator") as mock_generator:
+    with patch("wmin.basis._pdfNN_layer_generator") as mock_generator:
         mock_model = MagicMock()
         mock_generator.return_value = mock_model
 

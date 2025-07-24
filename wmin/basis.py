@@ -11,7 +11,7 @@ import numpy as np
 import tensorflow as tf
 from colibri.constants import EXPORT_LABELS, LHAPDF_XGRID
 from colibri.export_results import write_exportgrid
-from n3fit.model_gen import pdfNN_layer_generator
+from n3fit.model_gen import _pdfNN_layer_generator
 
 from wmin.utils import (
     FLAV_INFO,
@@ -38,7 +38,7 @@ def n3fit_pdf_model(
     However, for better stability, the sum rules are also imposed later-on in a more accurate way
     using a quadrature integration.
     """
-    pdf_model = pdfNN_layer_generator(
+    pdf_model = _pdfNN_layer_generator(
         nodes=nodes,
         activations=activations,
         initializer_name=initializer_name,
@@ -68,7 +68,7 @@ def n3fit_pdf_grid(
 
     Parameters
     ----------
-    n3fit_pdf_model: n3fit.model_gen.pdfNN_layer_generator
+    n3fit_pdf_model: n3fit.model_gen._pdfNN_layer_generator
         The n3fit model to use.
     xgrid: array, default is LHAPDF_XGRID
         The xgrid to use.
