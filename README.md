@@ -4,7 +4,7 @@
 [![codecov](https://codecov.io/gh/HEP-PBSP/wmin-model/graph/badge.svg?token=uYUy3rXCWK)](https://codecov.io/gh/HEP-PBSP/wmin-model)
 
 wmin-model is a [Colibri](https://github.com/HEP-PBSP/colibri) PDF-model that implements the POD parametrisation presented 
-in (TODO: arxiv id).
+in this [paper](https://arxiv.org/pdf/2507.16913).
 
 ## Installation
 
