@@ -66,7 +66,6 @@ SETUP = {
     "pdf_model": MockPDFModel(),
     "bayesian_prior": mock_bayesian_prior,
     "theoryid": MOCK_NAME_THEORY,
-    "ultranest_settings": NS_SETTINGS,
     "n_prior_samples": 100,
     "positivity_penalty_settings": {
         "positivity_penalty": False,
