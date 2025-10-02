@@ -93,7 +93,7 @@ def likelihood_time(
     pdf_model,
     bayesian_prior,
     theoryid,
-    ns_settings,
+    ultranest_settings,
     n_prior_samples=1000,
     positivity_penalty_settings={},
     integrability_penalty=lambda pdf: jax.numpy.array([0]),
@@ -128,7 +128,7 @@ def likelihood_time(
 
     theoryid: str
 
-    ns_settings: dict
+    ultranest_settings: dict
 
     n_prior_samples: int, 1000
 
@@ -155,7 +155,7 @@ def likelihood_time(
         _pred_data,
         fast_kernel_arrays,
         positivity_fast_kernel_arrays,
-        ns_settings,
+        ultranest_settings,
         chi2,
         _penalty_posdata,
         positivity_penalty_settings=positivity_penalty_settings,

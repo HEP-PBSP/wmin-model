@@ -39,7 +39,7 @@ wmin_settings:
 
 # Nested Sampling settings
 
-ns_settings:
+ultranest_settings:
   sampler_plot: False # is slow for large number of parameters
   n_posterior_samples: 10
   ReactiveNS_settings:
