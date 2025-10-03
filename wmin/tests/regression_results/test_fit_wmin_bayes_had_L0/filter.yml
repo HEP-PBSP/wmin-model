@@ -53,7 +53,7 @@ wmin_settings:
 
 bayesian_fit: True
 # Nested Sampling settings
-ns_settings:
+ultranest_settings:
   n_posterior_samples: 100
   ReactiveNS_settings:
     vectorized: False
