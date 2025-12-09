@@ -11,7 +11,7 @@ import numpy as np
 import tensorflow as tf
 from colibri.constants import EXPORT_LABELS, LHAPDF_XGRID
 from colibri.export_results import write_exportgrid
-from n3fit.model_gen import _pdfNN_layer_generator
+from n3fit.model_gen import _pdfNN_layer_generator, ReplicaSettings
 
 from wmin.utils import (
     FLAV_INFO,
@@ -38,22 +38,29 @@ def n3fit_pdf_model(
     However, for better stability, the sum rules are also imposed later-on in a more accurate way
     using a quadrature integration.
     """
+    min_rep = replica_range_settings["min_replica"]
+    max_rep = replica_range_settings["max_replica"]
+
+    # Build one ReplicaSettings per replica
+    replicas_settings = [
+        ReplicaSettings(
+            nodes=nodes,
+            activations=activations,
+            initializer=initializer_name,
+            architecture=layer_type,
+            seed=seed,
+        )
+        for seed in range(min_rep, max_rep + 1)
+    ]
+
     pdf_model = _pdfNN_layer_generator(
-        nodes=nodes,
-        activations=activations,
-        initializer_name=initializer_name,
-        layer_type=layer_type,
-        seed=range(
-            replica_range_settings["min_replica"],
-            replica_range_settings["max_replica"] + 1,
-        ),
-        impose_sumrule=True,  # sum-rules are also imposed later-on in a more accurate way.
+        replicas_settings=replicas_settings,
         flav_info=flav_info,
         fitbasis=fitbasis,
-        num_replicas=replica_range_settings["max_replica"]
-        - replica_range_settings["min_replica"]
-        + 1,
+        # leave impose_sumrule=None here so it defaults to "All"
+        # and still produces xgrid_integration (x_in) as before
     )
+
     return pdf_model
 
 
