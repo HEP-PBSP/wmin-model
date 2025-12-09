@@ -227,7 +227,7 @@ def write_pod_basis(
                 grid_for_writing=phi0,
                 grid_name=grid_name,
                 replica_index=i + 1,
-                Q=Q,
+                Q0=Q,
                 xgrid=xgrid,
                 export_labels=export_labels,
             )
@@ -236,7 +236,7 @@ def write_pod_basis(
                 grid_for_writing=basis[i - 1],
                 grid_name=grid_name,
                 replica_index=i + 1,
-                Q=Q,
+                Q0=Q,
                 xgrid=xgrid,
                 export_labels=export_labels,
             )
