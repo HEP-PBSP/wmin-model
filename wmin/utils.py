@@ -17,7 +17,6 @@ from colibri.likelihood import LogLikelihood
 from colibri.constants import FLAVOUR_TO_ID_MAPPING, LHAPDF_XGRID
 from reportengine.table import table
 
-
 log = logging.getLogger(__name__)
 
 
