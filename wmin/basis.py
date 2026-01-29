@@ -248,6 +248,3 @@ def write_pod_basis(
         "  2. Shift all others down by one index\n"
         "  3. Make replica_1 the new central member of the post-fit basis"
     )
-    log.warning(
-        "Reminder: decrement `NumMembers` by 1 in the LHAPDF .info file to reflect the removed member."
-    )
