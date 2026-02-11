@@ -207,6 +207,8 @@ def n3fit_pdf_grid(
                 # Build pdf_array as LHAPDF baseline broadcast across replicas.
                 pdf_array = np.repeat(baseline[np.newaxis, :, :], nreplicas, axis=0)
 
+                # TODO: impose MSR on gluon replicas here
+
                 # Overwrite gluon with NN per-replica values.
                 pdf_array[:, gluon_index, :] = pdf_array_nn[:, gluon_index, :]
     else:
