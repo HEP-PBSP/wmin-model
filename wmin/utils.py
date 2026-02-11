@@ -10,8 +10,6 @@ import time
 import jax
 import numpy as np
 import pandas as pd
-from colibri.likelihood import LogLikelihood
-from colibri.loss_functions import chi2
 
 from colibri.likelihood import LogLikelihood
 from colibri.constants import FLAVOUR_TO_ID_MAPPING, LHAPDF_XGRID
@@ -84,7 +82,7 @@ init = RSS_MB()
 @table
 def likelihood_time(
     _penalty_posdata,
-    central_inv_covmat_index,
+    central_covmat_index,
     fast_kernel_arrays,
     positivity_fast_kernel_arrays,
     _pred_data,
@@ -141,17 +139,16 @@ def likelihood_time(
     res = RSS_MB()
     log.info(f"RSS: {res - init:.2f}MB")
 
-    central_values = central_inv_covmat_index.central_values
+    central_values = central_covmat_index.central_values
     ndata = len(central_values)
 
     log_likelihood = LogLikelihood(
-        central_inv_covmat_index,
+        central_covmat_index,
         pdf_model,
         FIT_XGRID,
         _pred_data,
         fast_kernel_arrays,
         positivity_fast_kernel_arrays,
-        chi2,
         _penalty_posdata,
         positivity_penalty_settings=positivity_penalty_settings,
         integrability_penalty=integrability_penalty,
