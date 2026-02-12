@@ -226,15 +226,24 @@ def n3fit_pdf_grid(
                 for flav_index in range(nflavours):
                     flav_key = canonical_evol_labels[flav_index]
                     if flav_key is None or flav_key not in flavour_to_id:
-                        # Unknown/extra channel: freeze it to NN replica-0 so it does not vary.
-                        baseline[flav_index, :] = pdf_array_nn[0, flav_index, :]
+                        # Unknown/extra channel: keep it at zero.
                         continue
 
                     lha_id = flavour_to_id[flav_key]
-                    baseline[flav_index, :] = np.asarray(
-                        [lha_pdf.xfxQ(lha_id, float(x), Q) for x in xgrid],
-                        dtype=pdf_array_nn.dtype,
-                    )
+                    try:
+                        baseline[flav_index, :] = np.asarray(
+                            [lha_pdf.xfxQ(lha_id, float(x), Q) for x in xgrid],
+                            dtype=pdf_array_nn.dtype,
+                        )
+                    except Exception as exc:
+                        log.warning(
+                            "Could not read flavour '%s' (id=%s) from LHAPDF baseline; "
+                            "setting this channel to zero (%s).",
+                            flav_key,
+                            lha_id,
+                            exc,
+                        )
+                        baseline[flav_index, :] = 0.0
 
                 # Build pdf_array as LHAPDF baseline broadcast across replicas.
                 pdf_array = np.repeat(baseline[np.newaxis, :, :], nreplicas, axis=0)
