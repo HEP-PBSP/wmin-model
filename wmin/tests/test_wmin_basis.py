@@ -47,10 +47,14 @@ def test_n3fit_pdf_model():
         mock_generator.assert_called_once()
         args, kwargs = mock_generator.call_args
 
-        assert kwargs["nodes"] == [25, 20, 8]
-        assert kwargs["activations"] == ["tanh", "tanh", "linear"]
-        assert kwargs["impose_sumrule"] == True
-        assert kwargs["num_replicas"] == 5  # max_replica - min_replica + 1
+        replicas_settings = kwargs["replicas_settings"]
+        assert len(replicas_settings) == 5  # max_replica - min_replica + 1
+        assert [rep.seed for rep in replicas_settings] == [1, 2, 3, 4, 5]
+        assert replicas_settings[0].nodes == [25, 20, 8]
+        assert replicas_settings[0].activations == ["tanh", "tanh", "linear"]
+        assert replicas_settings[0].initializer == "glorot_normal"
+        assert replicas_settings[0].architecture == "dense"
+        assert kwargs["fitbasis"] == "EVOL"
 
         # Test with custom parameters
         custom_params = {
@@ -63,9 +67,11 @@ def test_n3fit_pdf_model():
         result = n3fit_pdf_model(**custom_params)
 
         args, kwargs = mock_generator.call_args
-        assert kwargs["nodes"] == [10, 5]
-        assert kwargs["activations"] == ["relu", "sigmoid"]
-        assert kwargs["num_replicas"] == 7  # 8 - 2 + 1
+        replicas_settings = kwargs["replicas_settings"]
+        assert len(replicas_settings) == 7  # 8 - 2 + 1
+        assert [rep.seed for rep in replicas_settings] == [2, 3, 4, 5, 6, 7, 8]
+        assert replicas_settings[0].nodes == [10, 5]
+        assert replicas_settings[0].activations == ["relu", "sigmoid"]
 
 
 def test_get_X_matrix():

@@ -7,6 +7,7 @@ Example:
   ...
 If a file with index 0000 exists, it will be deleted before renaming to avoid collisions.
 """
+
 import os
 import re
 import argparse
