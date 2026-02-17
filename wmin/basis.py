@@ -248,10 +248,38 @@ def n3fit_pdf_grid(
                 # Build pdf_array as LHAPDF baseline broadcast across replicas.
                 pdf_array = np.repeat(baseline[np.newaxis, :, :], nreplicas, axis=0)
 
-                # TODO: impose MSR on gluon replicas here
+                # Impose MSR with fixed singlet from the reference:
+                #   ∫ dx [x f_g^(m)(x) + x f_Sigma^(ref)(x)] = 1
+                # The arrays here are x*f(x), so we integrate them directly.
+                singlet_label = "\\Sigma"
+                if singlet_label not in canonical_norm:
+                    raise ValueError(
+                        "Could not determine singlet index in canonical evolution ordering. "
+                        f"canonical_labels={canonical_evol_labels}"
+                    )
+                singlet_index = canonical_norm.index(singlet_label)
+
+                sigma_ref = pdf_array[0, singlet_index, :]
+                sigma_momentum = float(np.trapezoid(sigma_ref, xgrid))
+                target_gluon_momentum = 1.0 - sigma_momentum
+
+                gluon_raw = pdf_array_nn[:, gluon_index, :].copy()
+                gluon_momenta = np.trapezoid(gluon_raw, xgrid, axis=1)
+
+                safe = np.abs(gluon_momenta) > 1e-16
+                if not np.all(safe):
+                    bad = np.where(~safe)[0].tolist()
+                    log.warning(
+                        "Skipping MSR rescaling for gluon replicas with near-zero momentum moment: %s",
+                        bad,
+                    )
+
+                scales = np.ones(nreplicas, dtype=pdf_array_nn.dtype)
+                scales[safe] = target_gluon_momentum / gluon_momenta[safe]
+                gluon_rescaled = gluon_raw * scales[:, np.newaxis]
 
                 # Overwrite gluon with NN per-replica values.
-                pdf_array[:, gluon_index, :] = pdf_array_nn[:, gluon_index, :]
+                pdf_array[:, gluon_index, :] = gluon_rescaled
     else:
         pdf_array = pdf_array_nn
 
