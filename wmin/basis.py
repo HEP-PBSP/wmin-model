@@ -9,7 +9,12 @@ import os
 
 import numpy as np
 import tensorflow as tf
-from colibri.constants import EXPORT_LABELS, FLAVOUR_TO_ID_MAPPING, LHAPDF_XGRID
+from colibri.constants import (
+    EXPORT_LABELS,
+    FLAVOUR_TO_ID_MAPPING,
+    LHAPDF_XGRID,
+    flavour_to_evolution_matrix,
+)
 from colibri.export_results import write_exportgrid
 from n3fit.model_gen import _pdfNN_layer_generator, ReplicaSettings
 
@@ -221,29 +226,59 @@ def n3fit_pdf_grid(
                 )
                 pdf_array = pdf_array_nn
             else:
-                # Fill baseline in canonical FK/evolution flavour order.
-                baseline = np.zeros((nflavours, len(xgrid)), dtype=pdf_array_nn.dtype)
-                for flav_index in range(nflavours):
-                    flav_key = canonical_evol_labels[flav_index]
-                    if flav_key is None or flav_key not in flavour_to_id:
-                        # Unknown/extra channel: keep it at zero.
-                        continue
-
-                    lha_id = flavour_to_id[flav_key]
+                # Build baseline in physical flavour basis (LHAPDF PIDs), then rotate to EVOL.
+                pid_from_export_label = {
+                    "TBAR": -6,
+                    "BBAR": -5,
+                    "CBAR": -4,
+                    "SBAR": -3,
+                    "UBAR": -2,
+                    "DBAR": -1,
+                    "GLUON": 21,
+                    "D": 1,
+                    "U": 2,
+                    "S": 3,
+                    "C": 4,
+                    "B": 5,
+                    "T": 6,
+                    "PHT": 22,
+                }
+                baseline_flavour = np.zeros(
+                    (len(EXPORT_LABELS), len(xgrid)), dtype=pdf_array_nn.dtype
+                )
+                for flavour_index, export_label in enumerate(EXPORT_LABELS):
+                    lha_id = pid_from_export_label[export_label]
                     try:
-                        baseline[flav_index, :] = np.asarray(
+                        baseline_flavour[flavour_index, :] = np.asarray(
                             [lha_pdf.xfxQ(lha_id, float(x), Q) for x in xgrid],
                             dtype=pdf_array_nn.dtype,
                         )
                     except Exception as exc:
                         log.warning(
-                            "Could not read flavour '%s' (id=%s) from LHAPDF baseline; "
+                            "Could not read physical flavour '%s' (pid=%s) from LHAPDF baseline; "
                             "setting this channel to zero (%s).",
-                            flav_key,
+                            export_label,
                             lha_id,
                             exc,
                         )
-                        baseline[flav_index, :] = 0.0
+                        baseline_flavour[flavour_index, :] = 0.0
+
+                baseline_evol = np.einsum(
+                    "ef,fx->ex",
+                    np.asarray(flavour_to_evolution_matrix, dtype=pdf_array_nn.dtype),
+                    baseline_flavour,
+                )
+
+                # Keep the downstream flavour-channel convention unchanged.
+                baseline = np.zeros((nflavours, len(xgrid)), dtype=pdf_array_nn.dtype)
+                for flav_index, flav_key in enumerate(canonical_evol_labels):
+                    if flav_key is None:
+                        continue
+
+                    evol_index = flavour_to_id.get(str(flav_key))
+                    if evol_index is None or evol_index >= baseline_evol.shape[0]:
+                        continue
+                    baseline[flav_index, :] = baseline_evol[evol_index, :]
 
                 # Build pdf_array as LHAPDF baseline broadcast across replicas.
                 pdf_array = np.repeat(baseline[np.newaxis, :, :], nreplicas, axis=0)
