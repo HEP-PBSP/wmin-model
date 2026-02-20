@@ -112,7 +112,23 @@ def n3fit_pdf_grid(
             log.info("No more outliers found in the PDF grid")
             filter_arclength_outliers = False
 
-    return pdf_array
+    # Filter based on integrability of T3
+    from colibri.constants import FLAVOUR_TO_ID_MAPPING
+    t3_idx = FLAVOUR_TO_ID_MAPPING["T3"]
+    t3_grid = pdf_array[:, t3_idx, :]
+    tol = 5e-5
+    integ_mask = abs(t3_grid[:,0]) <= tol
+    pdf_array_clean = pdf_array[integ_mask, :, :]
+
+    t8_idx = FLAVOUR_TO_ID_MAPPING["T8"]
+    t8_grid = pdf_array_clean[:, t8_idx, :]
+    integ_mask = abs(t8_grid[:,0]) <= tol
+    pdf_array_clean = pdf_array_clean[integ_mask, :, :]
+
+    print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+    print(f"pdf_array shape = {pdf_array_clean.shape}")
+    
+    return pdf_array_clean
 
 
 def get_X_matrix(pdf_grid: np.ndarray) -> tuple:
