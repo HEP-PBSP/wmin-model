@@ -112,23 +112,50 @@ def n3fit_pdf_grid(
             log.info("No more outliers found in the PDF grid")
             filter_arclength_outliers = False
 
-    # Filter based on integrability of T3
+    # Filter based on integrability by checking that the PDF at the first, and smallest, x-grid point of the grid is close to 
+    # zero for the flavours that should be integrable.
     from colibri.constants import FLAVOUR_TO_ID_MAPPING
-    t3_idx = FLAVOUR_TO_ID_MAPPING["T3"]
-    t3_grid = pdf_array[:, t3_idx, :]
-    tol = 5e-5
-    integ_mask = abs(t3_grid[:,0]) <= tol
-    pdf_array_clean = pdf_array[integ_mask, :, :]
+    TOL = 1e-3
 
-    t8_idx = FLAVOUR_TO_ID_MAPPING["T8"]
-    t8_grid = pdf_array_clean[:, t8_idx, :]
-    integ_mask = abs(t8_grid[:,0]) <= tol
-    pdf_array_clean = pdf_array_clean[integ_mask, :, :]
-
-    print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-    print(f"pdf_array shape = {pdf_array_clean.shape}")
+    # Filter valence flavours
+    TOL_V = 1e-2
+    v_grid = pdf_array[:, FLAVOUR_TO_ID_MAPPING["V"], :]
+    mask = np.abs(v_grid[:, 0]) <= TOL_V
+    pdf_array = pdf_array[mask, :, :]
+    print(pdf_array.shape)
     
-    return pdf_array_clean
+    v3_grid = pdf_array[:, FLAVOUR_TO_ID_MAPPING["V3"], :]
+    mask = np.abs(v3_grid[:, 0]) <= TOL_V
+    pdf_array = pdf_array[mask, :, :]
+    print(pdf_array.shape)
+
+    v8_grid = pdf_array[:, FLAVOUR_TO_ID_MAPPING["V8"], :]
+    mask = np.abs(v8_grid[:, 0]) <= TOL_V
+    pdf_array = pdf_array[mask, :, :]
+    print(pdf_array.shape)
+
+    v15_grid = pdf_array[:, FLAVOUR_TO_ID_MAPPING["V15"], :]
+    mask = np.abs(v15_grid[:, 0]) <= TOL_V
+    pdf_array = pdf_array[mask, :, :]
+    print(pdf_array.shape)
+
+    # Filter non-singlet flavours
+    t3_grid = pdf_array[:, FLAVOUR_TO_ID_MAPPING["T3"], :]
+    mask = np.abs(t3_grid[:, 0]) <= TOL
+    pdf_array = pdf_array[mask, :, :]
+    print(pdf_array.shape)
+
+    t8_grid = pdf_array[:, FLAVOUR_TO_ID_MAPPING["T8"], :]
+    mask = np.abs(t8_grid[:, 0]) <= TOL
+    pdf_array = pdf_array[mask, :, :]
+    print(pdf_array.shape)
+
+    # t15_grid = pdf_array[:, FLAVOUR_TO_ID_MAPPING["T15"], :]
+    # mask = np.abs(t15_grid[:, 0]) <= TOL_V
+    # pdf_array = pdf_array[mask, :, :]
+    # print(pdf_array.shape)
+
+    return pdf_array
 
 
 def get_X_matrix(pdf_grid: np.ndarray) -> tuple:
