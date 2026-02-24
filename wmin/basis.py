@@ -76,6 +76,9 @@ def n3fit_pdf_grid(
     n3fit_pdf_model,
     filter_arclength_outliers: bool = True,
     overwrite_non_gluon_from_lhapdf: bool = True,
+    lhapdf_set: str = "NNPDF31_nnlo_as_0118",
+    lhapdf_member: int = 0,
+    lhapdf_q: float = 1.65,
 ):
     """
     Returns the PDF grid for the n3fit model evaluated on the LHAPDF_XGRID.
@@ -90,6 +93,13 @@ def n3fit_pdf_grid(
         The xgrid to use.
     filter_arclength_outliers: bool, default is True
         Whether to filter out the arclength outliers from the PDF grid.
+    lhapdf_set: str, default is "NNPDF31_nnlo_as_0118"
+        LHAPDF set used to build the non-gluon baseline when
+        overwrite_non_gluon_from_lhapdf is True.
+    lhapdf_member: int, default is 0
+        LHAPDF member index used for the non-gluon baseline.
+    lhapdf_q: float, default is 1.65
+        Scale Q used when sampling the LHAPDF baseline.
 
     Returns
     -------
@@ -191,10 +201,6 @@ def n3fit_pdf_grid(
     # Build the baseline pdf_array from LHAPDF (central member), then overwrite
     # only the gluon channel using the NN evaluation.
     #
-    # Minimal/hardcoded starting point:
-    # - set: NNPDF31_nnlo_as_0118
-    # - member: 0 (central)
-    # - scale: Q = 1.65
     if overwrite_non_gluon_from_lhapdf:
         try:
             import lhapdf  # type: ignore
@@ -205,116 +211,118 @@ def n3fit_pdf_grid(
             )
             pdf_array = pdf_array_nn
         else:
-            lhapdf_set = "NNPDF31_nnlo_as_0118"  # arbitrary PDF set
-            lhapdf_member = 0  # selecting central member
-            Q = 1.65
-
-            try:
-                lha_pdf = lhapdf.mkPDF(lhapdf_set, lhapdf_member)
-                log.info(
-                    "Loaded LHAPDF set %s member %s at Q=%s",
-                    lhapdf_set,
-                    lhapdf_member,
-                    Q,
-                )
-            except Exception as exc:
+            if not lhapdf_set:
                 log.warning(
-                    "Failed to load LHAPDF set %s member %s (%s); using NN-generated grid for all flavours.",
-                    lhapdf_set,
-                    lhapdf_member,
-                    exc,
+                    "No LHAPDF set configured; using NN-generated grid for all flavours."
                 )
                 pdf_array = pdf_array_nn
             else:
-                # Build baseline in physical flavour basis (LHAPDF PIDs), then rotate to EVOL.
-                pid_from_export_label = {
-                    "TBAR": -6,
-                    "BBAR": -5,
-                    "CBAR": -4,
-                    "SBAR": -3,
-                    "UBAR": -2,
-                    "DBAR": -1,
-                    "GLUON": 21,
-                    "D": 1,
-                    "U": 2,
-                    "S": 3,
-                    "C": 4,
-                    "B": 5,
-                    "T": 6,
-                    "PHT": 22,
-                }
-                baseline_flavour = np.zeros(
-                    (len(EXPORT_LABELS), len(xgrid)), dtype=pdf_array_nn.dtype
-                )
-                for flavour_index, export_label in enumerate(EXPORT_LABELS):
-                    lha_id = pid_from_export_label[export_label]
-                    try:
-                        baseline_flavour[flavour_index, :] = np.asarray(
-                            [lha_pdf.xfxQ(lha_id, float(x), Q) for x in xgrid],
-                            dtype=pdf_array_nn.dtype,
-                        )
-                    except Exception as exc:
-                        log.warning(
-                            "Could not read physical flavour '%s' (pid=%s) from LHAPDF baseline; "
-                            "setting this channel to zero (%s).",
-                            export_label,
-                            lha_id,
-                            exc,
-                        )
-                        baseline_flavour[flavour_index, :] = 0.0
-
-                baseline_evol = np.einsum(
-                    "ef,fx->ex",
-                    np.asarray(flavour_to_evolution_matrix, dtype=pdf_array_nn.dtype),
-                    baseline_flavour,
-                )
-
-                # Keep the downstream flavour-channel convention unchanged.
-                baseline = np.zeros((nflavours, len(xgrid)), dtype=pdf_array_nn.dtype)
-                for flav_index, flav_key in enumerate(canonical_evol_labels):
-                    if flav_key is None:
-                        continue
-
-                    evol_index = flavour_to_id.get(str(flav_key))
-                    if evol_index is None or evol_index >= baseline_evol.shape[0]:
-                        continue
-                    baseline[flav_index, :] = baseline_evol[evol_index, :]
-
-                # Build pdf_array as LHAPDF baseline broadcast across replicas.
-                pdf_array = np.repeat(baseline[np.newaxis, :, :], nreplicas, axis=0)
-
-                # Impose MSR with fixed singlet from the reference:
-                #   ∫ dx [x f_g^(m)(x) + x f_Sigma^(ref)(x)] = 1
-                # The arrays here are x*f(x), so we integrate them directly.
-                singlet_label = "\\Sigma"
-                if singlet_label not in canonical_norm:
-                    raise ValueError(
-                        "Could not determine singlet index in canonical evolution ordering. "
-                        f"canonical_labels={canonical_evol_labels}"
+                try:
+                    lha_pdf = lhapdf.mkPDF(lhapdf_set, lhapdf_member)
+                    log.info(
+                        "Loaded LHAPDF set %s member %s at Q=%s",
+                        lhapdf_set,
+                        lhapdf_member,
+                        lhapdf_q,
                     )
-                singlet_index = canonical_norm.index(singlet_label)
-
-                sigma_ref = pdf_array[0, singlet_index, :]
-                sigma_momentum = float(np.trapezoid(sigma_ref, xgrid))
-                target_gluon_momentum = 1.0 - sigma_momentum
-
-                gluon_raw = pdf_array_nn[:, gluon_index, :].copy()
-                gluon_momenta = np.trapezoid(gluon_raw, xgrid, axis=1)
-
-                safe = np.abs(gluon_momenta) > 1e-16
-                if not np.all(safe):
-                    bad = np.where(~safe)[0].tolist()
+                except Exception as exc:
                     log.warning(
-                        "Skipping MSR rescaling for gluon replicas with near-zero momentum moment: %s",
-                        bad,
+                        "Failed to load LHAPDF set %s member %s (%s); using NN-generated grid for all flavours.",
+                        lhapdf_set,
+                        lhapdf_member,
+                        exc,
+                    )
+                    pdf_array = pdf_array_nn
+                else:
+                    # Build baseline in physical flavour basis (LHAPDF PIDs), then rotate to EVOL.
+                    pid_from_export_label = {
+                        "TBAR": -6,
+                        "BBAR": -5,
+                        "CBAR": -4,
+                        "SBAR": -3,
+                        "UBAR": -2,
+                        "DBAR": -1,
+                        "GLUON": 21,
+                        "D": 1,
+                        "U": 2,
+                        "S": 3,
+                        "C": 4,
+                        "B": 5,
+                        "T": 6,
+                        "PHT": 22,
+                    }
+                    baseline_flavour = np.zeros(
+                        (len(EXPORT_LABELS), len(xgrid)), dtype=pdf_array_nn.dtype
+                    )
+                    for flavour_index, export_label in enumerate(EXPORT_LABELS):
+                        lha_id = pid_from_export_label[export_label]
+                        try:
+                            baseline_flavour[flavour_index, :] = np.asarray(
+                                [lha_pdf.xfxQ(lha_id, float(x), lhapdf_q) for x in xgrid],
+                                dtype=pdf_array_nn.dtype,
+                            )
+                        except Exception as exc:
+                            log.warning(
+                                "Could not read physical flavour '%s' (pid=%s) from LHAPDF baseline; "
+                                "setting this channel to zero (%s).",
+                                export_label,
+                                lha_id,
+                                exc,
+                            )
+                            baseline_flavour[flavour_index, :] = 0.0
+
+                    baseline_evol = np.einsum(
+                        "ef,fx->ex",
+                        np.asarray(flavour_to_evolution_matrix, dtype=pdf_array_nn.dtype),
+                        baseline_flavour,
                     )
 
-                scales = np.ones(nreplicas, dtype=pdf_array_nn.dtype)
-                scales[safe] = target_gluon_momentum / gluon_momenta[safe]
-                gluon_rescaled = gluon_raw * scales[:, np.newaxis]
+                    # Keep the downstream flavour-channel convention unchanged.
+                    baseline = np.zeros((nflavours, len(xgrid)), dtype=pdf_array_nn.dtype)
+                    for flav_index, flav_key in enumerate(canonical_evol_labels):
+                        if flav_key is None:
+                            continue
 
-                # Overwrite gluon with NN per-replica values.
-                pdf_array[:, gluon_index, :] = gluon_rescaled
+                        evol_index = flavour_to_id.get(str(flav_key))
+                        if evol_index is None or evol_index >= baseline_evol.shape[0]:
+                            continue
+                        baseline[flav_index, :] = baseline_evol[evol_index, :]
+
+                    # Build pdf_array as LHAPDF baseline broadcast across replicas.
+                    pdf_array = np.repeat(baseline[np.newaxis, :, :], nreplicas, axis=0)
+
+                    # Impose MSR with fixed singlet from the reference:
+                    #   ∫ dx [x f_g^(m)(x) + x f_Sigma^(ref)(x)] = 1
+                    # The arrays here are x*f(x), so we integrate them directly.
+                    singlet_label = "\\Sigma"
+                    if singlet_label not in canonical_norm:
+                        raise ValueError(
+                            "Could not determine singlet index in canonical evolution ordering. "
+                            f"canonical_labels={canonical_evol_labels}"
+                        )
+                    singlet_index = canonical_norm.index(singlet_label)
+
+                    sigma_ref = pdf_array[0, singlet_index, :]
+                    sigma_momentum = float(np.trapezoid(sigma_ref, xgrid))
+                    target_gluon_momentum = 1.0 - sigma_momentum
+
+                    gluon_raw = pdf_array_nn[:, gluon_index, :].copy()
+                    gluon_momenta = np.trapezoid(gluon_raw, xgrid, axis=1)
+
+                    safe = np.abs(gluon_momenta) > 1e-16
+                    if not np.all(safe):
+                        bad = np.where(~safe)[0].tolist()
+                        log.warning(
+                            "Skipping MSR rescaling for gluon replicas with near-zero momentum moment: %s",
+                            bad,
+                        )
+
+                    scales = np.ones(nreplicas, dtype=pdf_array_nn.dtype)
+                    scales[safe] = target_gluon_momentum / gluon_momenta[safe]
+                    gluon_rescaled = gluon_raw * scales[:, np.newaxis]
+
+                    # Overwrite gluon with NN per-replica values.
+                    pdf_array[:, gluon_index, :] = gluon_rescaled
     else:
         pdf_array = pdf_array_nn
 
