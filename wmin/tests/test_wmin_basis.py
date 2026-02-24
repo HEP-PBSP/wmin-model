@@ -8,12 +8,14 @@ Tests are written using only functions without classes.
 import os
 import shutil
 import tempfile
+import types
 from unittest.mock import patch, MagicMock
 import numpy as np
 
 # Now import the module under test
 from wmin.basis import (
     n3fit_pdf_model,
+    n3fit_pdf_grid,
     get_X_matrix,
     pod_basis,
     write_pod_basis,
@@ -72,6 +74,42 @@ def test_n3fit_pdf_model():
         assert [rep.seed for rep in replicas_settings] == [2, 3, 4, 5, 6, 7, 8]
         assert replicas_settings[0].nodes == [10, 5]
         assert replicas_settings[0].activations == ["relu", "sigmoid"]
+
+
+def test_n3fit_pdf_grid_uses_runcard_lhapdf_set():
+    """n3fit_pdf_grid should pass the provided lhapdf_set to lhapdf.mkPDF."""
+
+    mock_pdf = MagicMock()
+    mock_pdf.xfxQ.return_value = 1.0
+    mock_lhapdf = types.SimpleNamespace(mkPDF=MagicMock(return_value=mock_pdf))
+
+    class DummyModel:
+        def __init__(self):
+            self.x_in = None
+            self.evolution_labels = ["g", "sigma"]
+
+        def __call__(self, _inputs):
+            # Shape: (1, nreplicas, nx, nflavours)
+            return np.ones((1, 2, 3, 2), dtype=float)
+
+    with patch("wmin.basis.LHAPDF_XGRID", [0.1, 0.2, 0.3]), patch(
+        "wmin.basis.FLAVOUR_TO_ID_MAPPING", {"g": 0, "\\Sigma": 1}
+    ), patch(
+        "wmin.basis.flavour_to_evolution_matrix", [[1.0, 0.0], [0.0, 1.0]]
+    ), patch("wmin.basis.EXPORT_LABELS", ["GLUON", "D"]), patch.dict(
+        "sys.modules", {"lhapdf": mock_lhapdf}
+    ):
+        pdf_grid = n3fit_pdf_grid(
+            DummyModel(),
+            filter_arclength_outliers=False,
+            overwrite_non_gluon_from_lhapdf=True,
+            lhapdf_set="CUSTOM_SET",
+            lhapdf_member=3,
+            lhapdf_q=2.0,
+        )
+
+    mock_lhapdf.mkPDF.assert_called_once_with("CUSTOM_SET", 3)
+    assert pdf_grid.shape == (2, 2, 3)
 
 
 def test_get_X_matrix():
