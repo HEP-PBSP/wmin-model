@@ -13,6 +13,11 @@ filter_sr_outliers: false
 
 fitbasis: EVOL
 
+# Baseline LHAPDF settings used by n3fit_pdf_grid
+lhapdf_set: NNPDF40_nnlo_as_01180
+lhapdf_member: 0
+lhapdf_q: 1.65
+
 nodes: [25, 20, 8]
 
 activations: ["tanh", "tanh", "linear"]
