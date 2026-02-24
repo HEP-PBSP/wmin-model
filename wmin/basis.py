@@ -446,12 +446,13 @@ def write_pod_basis(
     """
     pod, phi0 = pod_basis
     basis = pod + phi0
+    output_dir = os.fspath(output_path)
 
-    replicas_path = str(output_path) + "/replicas"
+    replicas_path = output_dir + "/replicas"
     if not os.path.exists(replicas_path):
         os.mkdir(replicas_path)
 
-    fit_name = str(output_path).split("/")[-1]
+    fit_name = output_dir.split("/")[-1]
 
     for i in range(basis.shape[0]):
 
@@ -483,10 +484,38 @@ def write_pod_basis(
                 export_labels=export_labels,
             )
 
+    # POD modes are U_i * S_i, so ||mode_i||^2 gives the associated eigenvalue.
+    pod_flat = pod.reshape(pod.shape[0], -1)
+    singular_values = np.linalg.norm(pod_flat, axis=1)
+    eigenvalues = singular_values**2
+    leading_eigenvalue = float(eigenvalues[0]) if eigenvalues.size > 0 else 0.0
+    if leading_eigenvalue > 0.0:
+        eigenvalue_ratio = eigenvalues / leading_eigenvalue
+    else:
+        eigenvalue_ratio = np.zeros_like(eigenvalues)
+
+    spectrum = np.column_stack(
+        [
+            np.arange(1, pod.shape[0] + 1, dtype=float),
+            eigenvalues,
+            eigenvalue_ratio,
+        ]
+    )
+    eigenvalues_path = os.path.join(output_dir, "pod_eigenvalues.csv")
+    np.savetxt(
+        eigenvalues_path,
+        spectrum,
+        delimiter=",",
+        comments="",
+        header="mode_index,eigenvalue,eigenvalue_ratio",
+        fmt=["%.0f", "%.18e", "%.18e"],
+    )
+
     # TODO: how can we ensure that in the postfit of the evolution we don't by mistake also create another central member?
     log.info(
         f"Replicas written to {replicas_path}, with the central member at replica_1."
     )
+    log.info("POD eigenvalue spectrum written to %s", eigenvalues_path)
 
     log.warning(
         "Note: this is a POD basis, so the central member is not the mean but always replica_1.\n"

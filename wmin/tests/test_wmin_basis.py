@@ -165,31 +165,38 @@ def test_write_pod_basis():
     print("Testing write_pod_basis...")
 
     with patch("wmin.basis.write_exportgrid") as mock_write:
-        with patch("wmin.basis.os.path.exists", return_value=False):
-            with patch("wmin.basis.os.mkdir") as mock_mkdir:
+        # Create test data
+        pod = np.array(
+            [
+                [[3.0, 0.0], [0.0, 4.0]],
+                [[0.0, 1.0], [2.0, 2.0]],
+            ]
+        )
+        phi0 = np.zeros((2, 2))
+        pod_basis_data = (pod, phi0)
 
-                # Create test data
-                pod = np.random.rand(3, 2, 4)  # (Neig, nflavours, nx)
-                phi0 = np.random.rand(2, 4)  # (nflavours, nx)
-                pod_basis_data = (pod, phi0)
+        temp_dir = tempfile.mkdtemp()
+        output_path = temp_dir
 
-                temp_dir = tempfile.mkdtemp()
-                output_path = os.path.join(temp_dir, "test_fit")
+        try:
+            write_pod_basis(pod_basis_data, output_path)
 
-                try:
-                    write_pod_basis(pod_basis_data, output_path)
+            # Check that write_exportgrid was called correct number of times
+            assert mock_write.call_count == pod.shape[0]
 
-                    # Check that directories were created
-                    mock_mkdir.assert_called()
+            # Check first call (central member)
+            first_call = mock_write.call_args_list[0]
+            args, kwargs = first_call
+            np.testing.assert_array_equal(kwargs["grid_for_writing"], phi0)
+            assert kwargs["replica_index"] == 1
 
-                    # Check that write_exportgrid was called correct number of times
-                    assert mock_write.call_count == pod.shape[0]
+            eigenvalues_path = os.path.join(output_path, "pod_eigenvalues.csv")
+            assert os.path.exists(eigenvalues_path)
+            spectrum = np.loadtxt(eigenvalues_path, delimiter=",", skiprows=1)
 
-                    # Check first call (central member)
-                    first_call = mock_write.call_args_list[0]
-                    args, kwargs = first_call
-                    np.testing.assert_array_equal(kwargs["grid_for_writing"], phi0)
-                    assert kwargs["replica_index"] == 1
+            np.testing.assert_allclose(spectrum[:, 0], [1.0, 2.0])
+            np.testing.assert_allclose(spectrum[:, 1], [25.0, 9.0])
+            np.testing.assert_allclose(spectrum[:, 2], [1.0, 9.0 / 25.0])
 
-                finally:
-                    shutil.rmtree(temp_dir, ignore_errors=True)
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
