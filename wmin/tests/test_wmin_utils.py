@@ -15,9 +15,10 @@ MOCK_NAME_THEORY = "test_theory"
 mock_penalty_posdata = (
     lambda pdf, alpha, lambda_positivity, fast_kernel_arrays: jnp.array([0])
 )
-central_inv_covmat_index = Mock()
-central_inv_covmat_index.central_values = jnp.ones(N_MOCK_DATA)
-central_inv_covmat_index.inv_covmat = jnp.eye(N_MOCK_DATA)
+central_covmat_index = Mock()
+central_covmat_index.central_values = jnp.ones(N_MOCK_DATA)
+central_covmat_index.covmat = jnp.eye(N_MOCK_DATA)
+central_covmat_index.central_values_idx = jnp.arange(N_MOCK_DATA)
 
 fast_kernel_arrays = ((jnp.ones(N_MOCK_DATA)),)
 positivity_fast_kernel_arrays = ((jnp.ones(N_MOCK_DATA)),)
@@ -58,7 +59,7 @@ def mock_bayesian_prior(rng):
 
 SETUP = {
     "_penalty_posdata": mock_penalty_posdata,
-    "central_inv_covmat_index": central_inv_covmat_index,
+    "central_covmat_index": central_covmat_index,
     "fast_kernel_arrays": fast_kernel_arrays,
     "positivity_fast_kernel_arrays": positivity_fast_kernel_arrays,
     "_pred_data": mock_pred_data,
