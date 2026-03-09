@@ -99,7 +99,7 @@ def main():
         # Replace REPLACE_NREP or any existing NumMembers value
         content = re.sub(r"NumMembers:.*", f"NumMembers: {num_members}", content)
         with open(info_path, "w") as f:
-                f.write(content)
+            f.write(content)
 
     print("Done.")
 
