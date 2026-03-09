@@ -88,18 +88,17 @@ def main():
             os.rename(tmp, dst)
 
     # Update NumMembers in .info files
-    info_files = [f for f in all_files if f.endswith(".info")]
+    info_file = [f for f in all_files if f.endswith(".info")][0]
     num_members = len(to_shift)  # number of shifted files = number of final members
 
-    for info_file in info_files:
-        info_path = os.path.join(args.directory, info_file)
-        print(f"Updating NumMembers to {num_members} in: {info_path}")
-        if not args.dry_run:
-            with open(info_path, "r") as f:
-                content = f.read()
-            # Replace REPLACE_NREP or any existing NumMembers value
-            content = re.sub(r"NumMembers:.*", f"NumMembers: {num_members}", content)
-            with open(info_path, "w") as f:
+    info_path = os.path.join(args.directory, info_file)
+    print(f"Updating NumMembers to {num_members} in: {info_path}")
+    if not args.dry_run:
+        with open(info_path, "r") as f:
+            content = f.read()
+        # Replace REPLACE_NREP or any existing NumMembers value
+        content = re.sub(r"NumMembers:.*", f"NumMembers: {num_members}", content)
+        with open(info_path, "w") as f:
                 f.write(content)
 
     print("Done.")
