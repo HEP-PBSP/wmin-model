@@ -7,11 +7,13 @@ import subprocess as sp
 import time
 
 import jax
+import jax.numpy as jnp
 import jax.scipy.linalg as jla
 import pytest
 from colibri.api import API as colibriAPI
 from colibri.loss_functions import chi2
 from colibri.bayes_prior import bayesian_prior
+from colibri.core import BayesianPrior
 from colibri.tests.conftest import (
     T0_PDFSET,
     TEST_DATASETS,
@@ -43,6 +45,26 @@ THRESHOLD_TIME_GLOBAL = 5e-2
 THRESHOLD_TIME_GLOBAL_POS = 6e-2
 
 RNG_KEY = 0
+
+
+def mock_prior_transform(x):
+    return x
+
+
+def mock_log_prob(x):
+    return jnp.array(0.0)
+
+
+def mock_sample(rng_key, n_samples):
+    n_params = len(MOCK_PDF_MODEL.param_names)
+    return jax.random.uniform(rng_key, shape=(n_samples, n_params))
+
+
+bayesian_prior = BayesianPrior(
+    prior_transform=lambda x: x,
+    log_prob=lambda x: -jnp.sum(x**2, axis=-1),
+    sample=lambda rng, n: jnp.zeros((n, MOCK_PDF_MODEL.n_parameters)),
+)
 
 
 def prior_samples(prior, wmin_model_settings):
@@ -86,7 +108,7 @@ def test_likelihood_dis_wmin(wmin_model_settings):
         **{**wmin_model_settings, "output_path": None, "dump_model": False}
     )
     # get bayesian prior
-    prior = bayesian_prior(TEST_PRIOR_SETTINGS_WMIN, MOCK_PDF_MODEL)
+    prior = bayesian_prior.prior_transform
 
     pred_and_pdf = pdf_model.pred_and_pdf_func(FIT_XGRID, forward_map=forward_map)
 
@@ -145,7 +167,7 @@ def test_likelihood_had_wmin(wmin_model_settings):
     )
 
     # get bayesian prior
-    prior = bayesian_prior(TEST_PRIOR_SETTINGS_WMIN, MOCK_PDF_MODEL)
+    prior = bayesian_prior.prior_transform
 
     pred_and_pdf = pdf_model.pred_and_pdf_func(FIT_XGRID, forward_map=forward_map)
 
@@ -204,7 +226,7 @@ def test_likelihood_global_wmin(wmin_model_settings):
     )
 
     # get bayesian prior
-    prior = bayesian_prior(TEST_PRIOR_SETTINGS_WMIN, MOCK_PDF_MODEL)
+    prior = bayesian_prior.prior_transform
 
     pred_and_pdf = pdf_model.pred_and_pdf_func(FIT_XGRID, forward_map=forward_map)
 
