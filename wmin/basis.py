@@ -83,6 +83,11 @@ def n3fit_pdf_grid(
         The xgrid to use.
     filter_arclength_outliers: bool, default is True
         Whether to filter out the arclength outliers from the PDF grid.
+    filter_integrability: bool, default is True
+        Whether to filter replicas based on integrability conditions.
+    integrability_threshold: float, default=0.5
+        Tolerance used to enforce integrability. If the sum is above
+        this value, the replica is discarded.
 
     Returns
     -------
