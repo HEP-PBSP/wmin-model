@@ -8,6 +8,9 @@ replica_range_settings:
   min_replica: 1
   max_replica: 1000
 
+impose_sumrule: true
+filter_sr_outliers: false
+
 fitbasis: EVOL
 
 nodes: [25, 20, 8]
