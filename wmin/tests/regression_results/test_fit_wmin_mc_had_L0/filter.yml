@@ -6,7 +6,7 @@ meta: 'A runcard to test a monte carlo fit.'
 
 dataset_inputs:    
   # HAD
-  - {dataset: CMS_2JET_7TEV_M12Y}
+  - {dataset: CMS_2JET_7TEV_M12-Y}
   - {dataset: CMS_1JET_8TEV_PTY, variant: legacy}
   - {dataset: CMS_TTBAR_7TEV_TOT_X-SEC, variant: legacy}
 
@@ -25,7 +25,7 @@ closure_test_pdf: NNPDF40_nnlo_as_01180 # The closure test PDF used if closure_l
 
 positivity:                            # Positivity datasets, used in the positivity penalty.
   posdatasets:
-  - {dataset: POSF2U, maxlambda: 1e6}
+  - {dataset: NNPDF_POS_2P24GEV_F2U, variant: None, maxlambda: 1e6}
 
 alpha: 1e-7                           
 lambda_positivity: 0                 
