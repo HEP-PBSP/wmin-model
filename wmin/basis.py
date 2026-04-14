@@ -9,7 +9,7 @@ import os
 
 import numpy as np
 import tensorflow as tf
-from colibri.constants import EXPORT_LABELS, LHAPDF_XGRID
+from colibri.constants import EXPORT_LABELS, LHAPDF_XGRID, FLAVOUR_TO_ID_MAPPING
 from colibri.export_results import write_exportgrid
 from n3fit.model_gen import _pdfNN_layer_generator, ReplicaSettings
 
@@ -67,6 +67,8 @@ def n3fit_pdf_model(
 def n3fit_pdf_grid(
     n3fit_pdf_model,
     filter_arclength_outliers: bool = True,
+    filter_integrability: bool = True,
+    integrability_threshold: float = 0.5,
 ):
     """
     Returns the PDF grid for the n3fit model evaluated on the LHAPDF_XGRID.
@@ -81,6 +83,11 @@ def n3fit_pdf_grid(
         The xgrid to use.
     filter_arclength_outliers: bool, default is True
         Whether to filter out the arclength outliers from the PDF grid.
+    filter_integrability: bool, default is True
+        Whether to filter replicas based on integrability conditions.
+    integrability_threshold: float, default=0.5
+        Tolerance used to enforce integrability. If the sum is above
+        this value, the replica is discarded.
 
     Returns
     -------
@@ -111,6 +118,37 @@ def n3fit_pdf_grid(
         if len(outliers) == 0:
             log.info("No more outliers found in the PDF grid")
             filter_arclength_outliers = False
+
+    # filter from integrability outliers
+    if filter_integrability:
+        log.info("Filtering out non-integrable replicas")
+        log.info(f"Integrability threshold: {integrability_threshold}")
+
+        flavours = ["V", "V3", "V8", "T3", "T8"]
+
+        while True:
+            initial_size = pdf_array.shape[0]
+
+            for flavour in flavours:
+                grid = pdf_array[:, FLAVOUR_TO_ID_MAPPING[flavour], :]
+
+                # sum over the first 20 points in the xgrid: all points of order e-9 up to first point of order e-7
+                mask = np.abs(grid[:, :20].sum(axis=1)) <= integrability_threshold
+
+                n_discarded = (~mask).sum()
+                n_kept = mask.sum()
+
+                log.info(
+                    f"Filtering {flavour} integrability: "
+                    f"discarded {n_discarded}, kept {n_kept}"
+                )
+
+                pdf_array = pdf_array[mask, :, :]
+
+            # stop condition: nothing changed in full cycle
+            if pdf_array.shape[0] == initial_size:
+                log.info("No more integrability outliers found")
+                break
 
     return pdf_array
 
