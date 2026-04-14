@@ -119,58 +119,27 @@ def n3fit_pdf_grid(
         log.info("Filtering out non-integrable replicas")
         log.info(f"Integrability threshold: {integrability_threshold}")
 
+        flavours = ["V", "V3", "V8", "T3", "T8"]
+
         while True:
-            v_grid = pdf_array[
-                :, FLAVOUR_TO_ID_MAPPING["V"], :
-            ]  # extract V flavour from all replicas
-            mask = (
-                np.abs(v_grid[:, :20].sum(axis=1)) <= integrability_threshold
-            )  # Sum first 20 x-points
-            # Count how many replicas are being discarded
-            n_discarded = (~mask).sum()  # Count False values
-            n_kept = mask.sum()  # Count True values
-            log.info(
-                f"Filtering V integrability: discarded {n_discarded} replicas, kept {n_kept}"
-            )
-            pdf_array = pdf_array[mask, :, :]  # keep only replicas where mask is 'true'
+            initial_size = pdf_array.shape[0]
 
-            v3_grid = pdf_array[:, FLAVOUR_TO_ID_MAPPING["V3"], :]
-            mask = np.abs(v3_grid[:, :20].sum(axis=1)) <= integrability_threshold
-            n_discarded = (~mask).sum()
-            n_kept = mask.sum()
-            log.info(
-                f"Filtering V3 integrability: discarded {n_discarded} replicas, kept {n_kept}"
-            )
-            pdf_array = pdf_array[mask, :, :]
+            for flavour in flavours:
+                grid = pdf_array[:, FLAVOUR_TO_ID_MAPPING[flavour], :]
+                mask = np.abs(grid[:, :20].sum(axis=1)) <= integrability_threshold
 
-            v8_grid = pdf_array[:, FLAVOUR_TO_ID_MAPPING["V8"], :]
-            mask = np.abs(v8_grid[:, :20].sum(axis=1)) <= integrability_threshold
-            n_discarded = (~mask).sum()
-            n_kept = mask.sum()
-            log.info(
-                f"Filtering V8 integrability: discarded {n_discarded} replicas, kept {n_kept}"
-            )
-            pdf_array = pdf_array[mask, :, :]
+                n_discarded = (~mask).sum()
+                n_kept = mask.sum()
 
-            t3_grid = pdf_array[:, FLAVOUR_TO_ID_MAPPING["T3"], :]
-            mask = np.abs(t3_grid[:, :20].sum(axis=1)) <= integrability_threshold
-            n_discarded = (~mask).sum()
-            n_kept = mask.sum()
-            log.info(
-                f"Filtering T3 integrability: discarded {n_discarded} replicas, kept {n_kept}"
-            )
-            pdf_array = pdf_array[mask, :, :]
+                log.info(
+                    f"Filtering {flavour} integrability: "
+                    f"discarded {n_discarded}, kept {n_kept}"
+                )
 
-            t8_grid = pdf_array[:, FLAVOUR_TO_ID_MAPPING["T8"], :]
-            mask = np.abs(t8_grid[:, :20].sum(axis=1)) <= integrability_threshold
-            n_discarded = (~mask).sum()
-            n_kept = mask.sum()
-            log.info(
-                f"Filtering T8 integrability: discarded {n_discarded} replicas, kept {n_kept}"
-            )
-            pdf_array = pdf_array[mask, :, :]
+                pdf_array = pdf_array[mask, :, :]
 
-            if n_discarded == 0:
+            # stop condition: nothing changed in full cycle
+            if pdf_array.shape[0] == initial_size:
                 log.info("No more integrability outliers found")
                 break
 
