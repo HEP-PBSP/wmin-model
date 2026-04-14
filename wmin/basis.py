@@ -131,6 +131,8 @@ def n3fit_pdf_grid(
 
             for flavour in flavours:
                 grid = pdf_array[:, FLAVOUR_TO_ID_MAPPING[flavour], :]
+
+                # sum over the first 20 points in the xgrid: all points of order e-9 up to first point of order e-7
                 mask = np.abs(grid[:, :20].sum(axis=1)) <= integrability_threshold
 
                 n_discarded = (~mask).sum()
