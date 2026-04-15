@@ -54,7 +54,11 @@ def n3fit_pdf_model(
     ]
 
     pdf_model = _pdfNN_layer_generator(
-        replicas_settings=replicas_settings, flav_info=flav_info, fitbasis=fitbasis
+        replicas_settings=replicas_settings,
+        flav_info=flav_info,
+        fitbasis=fitbasis,
+        # leave impose_sumrule=None here so it defaults to "All"
+        # and still produces xgrid_integration (x_in) as before
     )
 
     return pdf_model
