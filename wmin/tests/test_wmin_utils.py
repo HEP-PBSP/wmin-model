@@ -47,14 +47,11 @@ NS_SETTINGS = {
 class MockPDFModel:
     n_basis = N_MOCK_DATA
 
-    @staticmethod
-    def pred_and_pdf_func(FIT_XGRID, forward_map):
-        def pred_and_pdf(params, fast_kernel_arrays):
-            predictions = params * 2
-            pdf = params * 3
-            return predictions, pdf
-
-        return pred_and_pdf
+    def __call__(self, fast_kernel_arrays, params):
+        """Make the model callable for LogLikelihood"""
+        predictions = params * 2
+        pdf = params * 3
+        return predictions, pdf
 
 
 def mock_bayesian_prior(rng):
@@ -83,11 +80,6 @@ def test_likelihood_time_structure():
     """
     test the structure of the output of likelihood_time
     """
-    # Debug: Check what likelihood_time actually is
-    print(f"likelihood_time type: {type(likelihood_time)}")
-    print(f"likelihood_time: {likelihood_time}")
-    print(f"likelihood_time module: {likelihood_time.__module__}")
-
     result = likelihood_time(**SETUP)
     assert isinstance(result, pd.DataFrame)
     assert list(result.columns) == ["Ndata", "Theory", "Likelihood eval time (s)"]

@@ -85,8 +85,14 @@ def likelihood_time(
     central_covmat_index,
     fast_kernel_arrays,
     positivity_fast_kernel_arrays,
+<<<<<<< HEAD
     forward_map,
     pdf_model,
+=======
+    _pred_data,
+    FIT_XGRID,
+    forward_map,
+>>>>>>> 9cc67ab (update test)
     bayesian_prior,
     theoryid,
     n_prior_samples=1000,
@@ -116,7 +122,7 @@ def likelihood_time(
     FIT_XGRID: array
         The xgrid to use.
 
-    pdf_model: PDFModel
+    forward_map: ForwardMap
 
     bayesian_prior: function
         The prior function to use.
@@ -157,7 +163,7 @@ def likelihood_time(
     prior_samples = []
     for i in range(n_prior_samples):
         prior_samples.append(
-            bayesian_prior(jax.random.uniform(rng, shape=(pdf_model.n_basis,)))
+            bayesian_prior(jax.random.uniform(rng, shape=(forward_map.n_basis,)))
         )
 
     # compile likelihood
