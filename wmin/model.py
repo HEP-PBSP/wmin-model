@@ -33,9 +33,13 @@ class WMinPDF(PDFModel):
 
     name = "weight mininisation PDF model"
 
-    def __init__(self, wminpdfset, n_basis):
+    def __init__(self, wminpdfset, basis_indices):
         self.wminpdfset = wminpdfset
-        self.n_basis = n_basis
+        self.basis_indices = basis_indices
+
+    @property
+    def n_basis(self):
+        return len(self.basis_indices)
 
     @property
     def param_names(self):
@@ -68,13 +72,13 @@ class WMinPDF(PDFModel):
             ).squeeze(-1)
         )
 
-        if self.n_basis + 1 > input_grid.shape[0]:
+        if max(self.basis_indices) >= input_grid.shape[0]:
             raise ValueError(
                 "The number of basis functions is larger than the number of replicas in the wminpdfset."
             )
 
         # reduce INPUT_GRID to only keep n_replicas_wmin PDF replicas
-        wmin_basis_idx = jnp.arange(1, self.n_basis + 1)
+        wmin_basis_idx = jnp.array(self.basis_indices)
 
         # == generate weight minimization grid so that sum rules are automatically fulfilled == #
         # pick central wmin replica as central replica from PDF set

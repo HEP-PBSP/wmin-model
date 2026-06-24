@@ -35,7 +35,9 @@ class WminConfig(colibriConfig):
             wmin parametrization
         """
 
-        model = WMinPDF(PDF(wmin_settings["wminpdfset"]), wmin_settings["n_basis"])
+        model = WMinPDF(
+            PDF(wmin_settings["wminpdfset"]), wmin_settings["basis_indices"]
+        )
 
         # dump model to output_path using dill
         # this is mainly needed by scripts/ns_resampler.py
