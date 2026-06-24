@@ -12,7 +12,6 @@ import jax.scipy.linalg as jla
 import pytest
 from colibri.api import API as colibriAPI
 from colibri.loss_functions import chi2
-from colibri.bayes_prior import bayesian_prior
 from colibri.core import BayesianPrior
 from colibri.tests.conftest import (
     T0_PDFSET,
@@ -91,10 +90,6 @@ def test_likelihood_dis_wmin(wmin_model_settings):
     """
     # get chi2 with no positivity
     loss_function = chi2
-    # get forward map
-    forward_map = colibriAPI.make_pred_data(**TEST_DATASETS)
-    # get FIT_XGRID
-    FIT_XGRID = colibriAPI.FIT_XGRID(**TEST_DATASETS)
     # get fast_kernel_arrays
     fast_kernel_arrays = colibriAPI.fast_kernel_arrays(**TEST_DATASETS)
     # get centralconvat_index
@@ -103,18 +98,22 @@ def test_likelihood_dis_wmin(wmin_model_settings):
     )
     central_values = central_covmat_index.central_values
     inv_covmat = jla.inv(central_covmat_index.covmat)
-    # get pdf_model
-    pdf_model = wminAPI.pdf_model(
-        **{**wmin_model_settings, "output_path": None, "dump_model": False}
-    )
     # get bayesian prior
     prior = bayesian_prior.prior_transform
 
-    pred_and_pdf = pdf_model.pred_and_pdf_func(FIT_XGRID, forward_map=forward_map)
+    fwd_map = wminAPI.forward_map(
+        **{
+            **TEST_DATASETS,
+            **wmin_model_settings,
+            **T0_PDFSET,
+            "output_path": None,
+            "dump_model": False,
+        }
+    )
 
     @jax.jit
     def log_likelihood(params, central_values, inv_covmat, fast_kernel_arrays):
-        predictions, _ = pred_and_pdf(params, fast_kernel_arrays)
+        predictions, _ = fwd_map(fast_kernel_arrays, params)
         return -0.5 * loss_function(central_values, predictions, inv_covmat)
 
     # Sample params from the prior
@@ -146,12 +145,6 @@ def test_likelihood_had_wmin(wmin_model_settings):
     # get chi2 with no positivity
     loss_function = chi2
 
-    # get forward map
-    forward_map = colibriAPI.make_pred_data(**TEST_DATASETS_HAD)
-
-    # get FIT_XGRID
-    FIT_XGRID = colibriAPI.FIT_XGRID(**TEST_DATASETS_HAD)
-
     # get fast_kernel_arrays
     fast_kernel_arrays = colibriAPI.fast_kernel_arrays(**TEST_DATASETS_HAD)
     # get centralconvat_index
@@ -161,19 +154,22 @@ def test_likelihood_had_wmin(wmin_model_settings):
     central_values = central_covmat_index.central_values
     inv_covmat = jla.inv(central_covmat_index.covmat)
 
-    # get pdf_model
-    pdf_model = wminAPI.pdf_model(
-        **{**wmin_model_settings, "output_path": None, "dump_model": False}
-    )
-
     # get bayesian prior
     prior = bayesian_prior.prior_transform
 
-    pred_and_pdf = pdf_model.pred_and_pdf_func(FIT_XGRID, forward_map=forward_map)
+    fwd_map = wminAPI.forward_map(
+        **{
+            **TEST_DATASETS_HAD,
+            **wmin_model_settings,
+            **T0_PDFSET,
+            "output_path": None,
+            "dump_model": False,
+        }
+    )
 
     @jax.jit
     def log_likelihood(params, central_values, inv_covmat, fast_kernel_arrays):
-        predictions, _ = pred_and_pdf(params, fast_kernel_arrays)
+        predictions, _ = fwd_map(fast_kernel_arrays, params)
         return -0.5 * loss_function(central_values, predictions, inv_covmat)
 
     # Sample params from the prior
@@ -205,12 +201,6 @@ def test_likelihood_global_wmin(wmin_model_settings):
     # get chi2 with no positivity
     loss_function = chi2
 
-    # get forward map
-    forward_map = colibriAPI.make_pred_data(**TEST_DATASETS_DIS_HAD)
-
-    # get FIT_XGRID
-    FIT_XGRID = colibriAPI.FIT_XGRID(**TEST_DATASETS_DIS_HAD)
-
     # get fast_kernel_arrays
     fast_kernel_arrays = colibriAPI.fast_kernel_arrays(**TEST_DATASETS_DIS_HAD)
     # get centralconvat_index
@@ -220,19 +210,22 @@ def test_likelihood_global_wmin(wmin_model_settings):
     central_values = central_covmat_index.central_values
     inv_covmat = jla.inv(central_covmat_index.covmat)
 
-    # get pdf_model
-    pdf_model = wminAPI.pdf_model(
-        **{**wmin_model_settings, "output_path": None, "dump_model": False}
-    )
-
     # get bayesian prior
     prior = bayesian_prior.prior_transform
 
-    pred_and_pdf = pdf_model.pred_and_pdf_func(FIT_XGRID, forward_map=forward_map)
+    fwd_map = wminAPI.forward_map(
+        **{
+            **TEST_DATASETS_DIS_HAD,
+            **wmin_model_settings,
+            **T0_PDFSET,
+            "output_path": None,
+            "dump_model": False,
+        }
+    )
 
     @jax.jit
     def log_likelihood(params, central_values, inv_covmat, fast_kernel_arrays):
-        predictions, _ = pred_and_pdf(params, fast_kernel_arrays)
+        predictions, _ = fwd_map(fast_kernel_arrays, params)
         return -0.5 * loss_function(central_values, predictions, inv_covmat)
 
     # Sample params from the prior

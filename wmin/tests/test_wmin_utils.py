@@ -24,6 +24,10 @@ fast_kernel_arrays = ((jnp.ones(N_MOCK_DATA)),)
 positivity_fast_kernel_arrays = ((jnp.ones(N_MOCK_DATA)),)
 
 mock_pred_data = lambda pdf, fast_kernel_arrays: jnp.ones(N_MOCK_DATA)
+mock_forward_map = lambda params, fast_kernel_arrays: (
+    jnp.ones(N_MOCK_DATA),
+    jnp.ones(N_MOCK_DATA),
+)
 
 
 NS_SETTINGS = {
@@ -62,8 +66,7 @@ SETUP = {
     "central_covmat_index": central_covmat_index,
     "fast_kernel_arrays": fast_kernel_arrays,
     "positivity_fast_kernel_arrays": positivity_fast_kernel_arrays,
-    "_pred_data": mock_pred_data,
-    "FIT_XGRID": TEST_XGRID,
+    "forward_map": mock_forward_map,
     "pdf_model": MockPDFModel(),
     "bayesian_prior": mock_bayesian_prior,
     "theoryid": MOCK_NAME_THEORY,
