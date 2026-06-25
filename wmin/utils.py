@@ -122,7 +122,7 @@ def likelihood_time(
     FIT_XGRID: array
         The xgrid to use.
 
-    forward_map: ForwardMap
+    pdf_model: PDFModel
 
     bayesian_prior: function
         The prior function to use.
@@ -163,7 +163,7 @@ def likelihood_time(
     prior_samples = []
     for i in range(n_prior_samples):
         prior_samples.append(
-            bayesian_prior(jax.random.uniform(rng, shape=(forward_map.n_basis,)))
+            bayesian_prior(jax.random.uniform(rng, shape=(pdf_model.n_basis,)))
         )
 
     # compile likelihood

@@ -47,11 +47,14 @@ NS_SETTINGS = {
 class MockPDFModel:
     n_basis = N_MOCK_DATA
 
-    def __call__(self, fast_kernel_arrays, params):
-        """Make the model callable for LogLikelihood"""
-        predictions = params * 2
-        pdf = params * 3
-        return predictions, pdf
+    @staticmethod
+    def pred_and_pdf_func(FIT_XGRID, forward_map):
+        def pred_and_pdf(params, fast_kernel_arrays):
+            predictions = params * 2
+            pdf = params * 3
+            return predictions, pdf
+
+        return pred_and_pdf
 
 
 def mock_bayesian_prior(rng):
