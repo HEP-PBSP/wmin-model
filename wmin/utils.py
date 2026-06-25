@@ -85,14 +85,8 @@ def likelihood_time(
     central_covmat_index,
     fast_kernel_arrays,
     positivity_fast_kernel_arrays,
-<<<<<<< HEAD
     forward_map,
     pdf_model,
-=======
-    _pred_data,
-    FIT_XGRID,
-    forward_map,
->>>>>>> 9cc67ab (update test)
     bayesian_prior,
     theoryid,
     n_prior_samples=1000,
