@@ -126,8 +126,6 @@ def n3fit_pdf_grid(
 
         flavours = ["V", "V3", "V8", "T3", "T8"]
 
-        initial_size = pdf_array.shape[0]
-
         for flavour in flavours:
             grid = pdf_array[:, FLAVOUR_TO_ID_MAPPING[flavour], :]
 
@@ -143,10 +141,6 @@ def n3fit_pdf_grid(
             )
 
             pdf_array = pdf_array[mask, :, :]
-
-        # stop condition: nothing changed in full cycle
-        if pdf_array.shape[0] == initial_size:
-            log.info("No more integrability outliers found")
 
     return pdf_array
 
